@@ -21,6 +21,7 @@
 5. Build settings：
    - Build command：`npm run build`
    - Publish directory：`.next`
+   - Netlify Next.js plugin：使用 `netlify.toml` 內的 `@netlify/plugin-nextjs`
 6. 到 **Environment variables** 新增：
 
 ```env
