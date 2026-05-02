@@ -9,8 +9,29 @@
 建議使用：
 
 - GitHub：保存程式碼
-- Vercel：發佈 Next.js 網站
+- Netlify 或 Vercel：發佈 Next.js 網站
 - Supabase：資料庫、Auth、Storage
+
+## Netlify 發佈流程
+
+1. 到 Netlify 選 **Add new site**。
+2. 選 **Import an existing project**。
+3. 連接 GitHub。
+4. 選 repository：`chatgptcjcu-boop/Elder-Visit-Platform`。
+5. Build settings：
+   - Build command：`npm run build`
+   - Publish directory：`.next`
+6. 到 **Environment variables** 新增：
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://ojypmuzlqdmnpdyeaszc.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=你的 Supabase publishable / anon key
+```
+
+7. 按 **Deploy**。
+8. Netlify 產生網址後，到 Supabase Auth 設定：
+   - Site URL：填 Netlify 網址
+   - Redirect URLs：加入 Netlify 網址與 `/login`
 
 ## Vercel 必填環境變數
 
