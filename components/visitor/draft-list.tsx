@@ -1,0 +1,72 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { FilePenLine } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import type { VisitDraft } from "@/lib/domain/offline-drafts";
+import { visitSchedules } from "@/lib/domain/mock-data";
+import { getVisitDraftKey } from "@/lib/domain/offline-drafts";
+
+type DraftItem = {
+  scheduleId: string;
+  draft: VisitDraft;
+};
+
+export function DraftList() {
+  const [drafts, setDrafts] = useState<DraftItem[]>([]);
+
+  useEffect(() => {
+    setDrafts(
+      visitSchedules.flatMap((schedule) => {
+        const stored = window.localStorage.getItem(getVisitDraftKey(schedule.id));
+
+        if (!stored) {
+          return [];
+        }
+
+        return [
+          {
+            scheduleId: schedule.id,
+            draft: JSON.parse(stored) as VisitDraft,
+          },
+        ];
+      }),
+    );
+  }, []);
+
+  return (
+    <div className="grid gap-4">
+      <section className="rounded-lg border bg-card p-4">
+        <div className="flex items-center gap-2">
+          <FilePenLine className="h-5 w-5 text-primary" />
+          <h1 className="text-2xl font-semibold">離線草稿</h1>
+        </div>
+        <p className="mt-2 text-sm text-muted-foreground">
+          訪查填報會自動保存在本機，送出成功後會清除。
+        </p>
+      </section>
+
+      {drafts.length === 0 ? (
+        <section className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
+          目前沒有尚未送出的訪查草稿。
+        </section>
+      ) : (
+        <section className="grid gap-3 md:grid-cols-2">
+          {drafts.map((item) => (
+            <article key={item.scheduleId} className="rounded-lg border bg-card p-4">
+              <h2 className="font-semibold">{item.scheduleId}</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {item.draft.visitResult} · {item.draft.healthStatus} ·{" "}
+                {new Date(item.draft.updatedAt).toLocaleString("zh-TW")}
+              </p>
+              <Button asChild className="mt-4 w-full">
+                <Link href={`/visitor/visits/${item.scheduleId}`}>繼續填報</Link>
+              </Button>
+            </article>
+          ))}
+        </section>
+      )}
+    </div>
+  );
+}

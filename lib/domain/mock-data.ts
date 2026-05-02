@@ -1,0 +1,278 @@
+import type {
+  AIRecommendationConfidence,
+  Account,
+  ActivityItem,
+  DashboardMetric,
+  ElderCase,
+  PlatformBlueprint,
+  Unit,
+  VisitQuestion,
+  VisitSchedule,
+  Workspace,
+} from "@/lib/domain/types";
+
+export const currentAccount: Account = {
+  id: "acc_demo_manager",
+  email: "manager@example.org",
+  fullName: "示範承辦人",
+  status: "active",
+};
+
+export const units: Unit[] = [
+  {
+    id: "unit_demo_office",
+    unitName: "示範公所",
+    unitType: "government",
+    city: "臺中市",
+    district: "北區",
+  },
+  {
+    id: "unit_demo_association",
+    unitName: "示範協會",
+    unitType: "ngo",
+    city: "臺中市",
+    district: "西區",
+  },
+];
+
+export const blueprints: PlatformBlueprint[] = [
+  {
+    id: "bp_elder_visit_v1",
+    name: "獨居長者訪查 Blueprint",
+    type: "elder_visit",
+    version: "1.0.0",
+    firstMarketFit: true,
+    description: "名冊匯入、派案、訪查、同意書、稽核、核銷、KPI 與政府格式匯出。",
+  },
+  {
+    id: "bp_temple_service_v1",
+    name: "宮廟巡檢與公益服務 Blueprint",
+    type: "temple_governance",
+    version: "0.8.0",
+    firstMarketFit: false,
+    description: "巡檢、志工任務、成果報表、課程與證書的第二階段擴展藍圖。",
+  },
+];
+
+export const aiConfidence: AIRecommendationConfidence = {
+  confidenceScore: 92,
+  reasoningSummary: "推薦獨居長者訪查 Blueprint，因為需求包含派案、核銷、長者名冊與稽核。",
+  matchedSignals: ["需要派案", "需要核銷", "需要長者名冊", "符合第一市場"],
+};
+
+export const workspaces: Workspace[] = [
+  {
+    id: "ws_elder_visit_115",
+    unitId: "unit_demo_office",
+    name: "115 年獨居長者訪查",
+    type: "elder_visit",
+    status: "active",
+    blueprint: blueprints[0],
+    bindingStatus: "locked",
+    responsiblePerson: "社會課承辦人",
+    roleName: "workspace_manager",
+    capabilities: [
+      "dashboard.read",
+      "workspace.manage",
+      "permissions.manage",
+      "cases.read",
+      "cases.import",
+      "assignment.manage",
+      "visits.submit",
+      "audit.run",
+      "audit.approve",
+      "payments.calculate",
+      "payments.lock",
+      "exports.create",
+    ],
+    planName: "社福訪查專案版",
+    planLimits: [
+      { key: "max_users", label: "使用者", limit: 30, used: 12 },
+      { key: "max_workspaces", label: "工作空間", limit: 3, used: 1 },
+      { key: "max_cases", label: "案件", limit: 500, used: 248 },
+      { key: "max_exports", label: "匯出", limit: 50, used: 9 },
+    ],
+  },
+  {
+    id: "ws_temple_demo",
+    unitId: "unit_demo_association",
+    name: "宮廟巡檢示範",
+    type: "temple_governance",
+    status: "draft",
+    blueprint: blueprints[1],
+    bindingStatus: "legacy",
+    responsiblePerson: "協會秘書",
+    roleName: "workspace_owner",
+    capabilities: ["dashboard.read", "workspace.manage"],
+    planName: "公益治理基礎版",
+    planLimits: [
+      { key: "max_users", label: "使用者", limit: 10, used: 3 },
+      { key: "max_workspaces", label: "工作空間", limit: 1, used: 1 },
+      { key: "max_forms", label: "表單", limit: 8, used: 2 },
+    ],
+  },
+];
+
+export const dashboardMetrics: DashboardMetric[] = [
+  { key: "cases", label: "名冊案件", value: "248", detail: "本月新增 32 件" },
+  { key: "completed", label: "已完成訪查", value: "154", detail: "完成率 62%" },
+  { key: "audit", label: "待稽核", value: "27", detail: "6 件需補件" },
+  { key: "payments", label: "待核銷", value: "41", detail: "預估 38,600 元" },
+];
+
+export const activityItems: ActivityItem[] = [
+  {
+    author: "派案規則",
+    content: "今日尚有 18 件訪查任務待分派，建議先處理高風險名冊。",
+    tone: "system",
+  },
+  {
+    author: "督導",
+    content: "三筆訪查紀錄缺少同意書，需補件後才能進入核銷。",
+    tone: "warning",
+  },
+  {
+    author: "訪員端",
+    content: "上午訪查完成率 62%，未遇案件已排入第二次訪視。",
+    tone: "default",
+  },
+];
+
+export const elderCases: ElderCase[] = [
+  {
+    id: "case_001",
+    caseCode: "EV-115-0001",
+    name: "林阿梅",
+    age: 82,
+    phone: "0912-000-001",
+    address: "臺中市北區進化路 100 號",
+    district: "北區",
+    riskLevel: "high",
+    status: "assigned",
+  },
+  {
+    id: "case_002",
+    caseCode: "EV-115-0002",
+    name: "陳水木",
+    age: 78,
+    phone: "0912-000-002",
+    address: "臺中市北區崇德路一段 88 號",
+    district: "北區",
+    riskLevel: "medium",
+    status: "assigned",
+  },
+  {
+    id: "case_003",
+    caseCode: "EV-115-0003",
+    name: "張秀蘭",
+    age: 86,
+    phone: "0912-000-003",
+    address: "臺中市北區學士路 60 號",
+    district: "北區",
+    riskLevel: "high",
+    status: "assigned",
+  },
+];
+
+export const visitSchedules: VisitSchedule[] = [
+  {
+    id: "schedule_001",
+    workspaceId: "ws_elder_visit_115",
+    caseId: "case_001",
+    visitorId: "visitor_001",
+    visitDate: "2026-04-26T10:00:00+08:00",
+    visitAttempt: 1,
+    status: "pending",
+    assignmentReason: "高風險、同區域、訪員已完成訓練",
+    requiredFormTemplateIds: [
+      "gov_social_worker_confidentiality_115",
+      "gov_civil_affairs_confidentiality_115",
+      "gov_personal_data_consent_115",
+      "gov_care_visit_115",
+    ],
+  },
+  {
+    id: "schedule_002",
+    workspaceId: "ws_elder_visit_115",
+    caseId: "case_002",
+    visitorId: "visitor_001",
+    visitDate: "2026-04-26T14:00:00+08:00",
+    visitAttempt: 2,
+    status: "needs_follow_up",
+    assignmentReason: "第一次未遇，依流程安排第二次訪視",
+    requiredFormTemplateIds: [
+      "gov_social_worker_confidentiality_115",
+      "gov_civil_affairs_confidentiality_115",
+      "gov_personal_data_consent_115",
+      "gov_care_visit_115",
+    ],
+  },
+  {
+    id: "schedule_003",
+    workspaceId: "ws_elder_visit_115",
+    caseId: "case_003",
+    visitorId: "visitor_001",
+    visitDate: "2026-04-26T16:00:00+08:00",
+    visitAttempt: 1,
+    status: "pending",
+    assignmentReason: "高風險、需優先確認生活支持狀態",
+    requiredFormTemplateIds: [
+      "gov_social_worker_confidentiality_115",
+      "gov_civil_affairs_confidentiality_115",
+      "gov_personal_data_consent_115",
+      "gov_care_visit_115",
+    ],
+  },
+];
+
+export const visitQuestions: VisitQuestion[] = [
+  {
+    key: "visitResult",
+    label: "這次訪查結果",
+    type: "select",
+    required: true,
+    options: ["訪視成功", "未遇", "拒訪", "地址錯誤", "需轉介"],
+  },
+  {
+    key: "healthStatus",
+    label: "健康狀況觀察",
+    type: "select",
+    required: true,
+    options: ["穩定", "需關懷追蹤", "疑似急迫風險"],
+  },
+  {
+    key: "livingStatus",
+    label: "生活支持狀態",
+    type: "select",
+    required: true,
+    options: ["可自理", "部分需協助", "高度需協助"],
+  },
+  {
+    key: "consentSigned",
+    label: "是否已取得同意",
+    type: "boolean",
+    required: true,
+  },
+  {
+    key: "notes",
+    label: "補充紀錄",
+    type: "textarea",
+    required: false,
+  },
+];
+
+export function getCurrentWorkspace() {
+  return workspaces[0];
+}
+
+export function getUnit(unitId: string) {
+  return units.find((unit) => unit.id === unitId);
+}
+
+export function getCase(caseId: string) {
+  return elderCases.find((elderCase) => elderCase.id === caseId);
+}
+
+export function getVisitSchedule(scheduleId: string) {
+  return visitSchedules.find((schedule) => schedule.id === scheduleId);
+}

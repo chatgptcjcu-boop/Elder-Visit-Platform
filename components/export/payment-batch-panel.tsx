@@ -1,0 +1,113 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { CircleDollarSign, PackageCheck } from "lucide-react";
+import { useCan } from "@/components/auth/permission-provider";
+import { Button } from "@/components/ui/button";
+import type { PaymentBatch } from "@/lib/domain/types";
+
+export function PaymentBatchPanel() {
+  const canCalculatePayments = useCan("payments.calculate");
+  const [batch, setBatch] = useState<PaymentBatch | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    void loadPreview();
+  }, []);
+
+  async function loadPreview() {
+    const response = await fetch("/api/payments/batch");
+    const result = (await response.json()) as { data?: PaymentBatch };
+    setBatch(result.data ?? null);
+  }
+
+  async function createBatch() {
+    const response = await fetch("/api/payments/batch", { method: "POST" });
+    const result = (await response.json()) as { data?: PaymentBatch };
+    setBatch(result.data ?? null);
+    setMessage(result.data ? `已建立核銷批次 ${result.data.batchNo}` : "建立批次失敗。");
+  }
+
+  return (
+    <section className="rounded-lg border bg-card p-4">
+      <div className="flex items-center gap-2">
+        <PackageCheck className="h-5 w-5 text-primary" />
+        <h2 className="text-base font-semibold">核銷批次</h2>
+      </div>
+      <p className="mt-2 text-sm text-muted-foreground">
+        將已鎖定的核銷項目彙整成批次，確認總額後再交給匯出模板。
+      </p>
+
+      {batch && (
+        <div className="mt-4 grid gap-3">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <MiniMetric label="批次編號" value={batch.batchNo} />
+            <MiniMetric label="筆數" value={`${batch.itemCount}`} />
+            <MiniMetric label="總額" value={`${batch.totalAmount.toLocaleString("zh-TW")} 元`} />
+          </div>
+
+          {batch.warnings.length > 0 && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              {batch.warnings.join(" ")}
+            </div>
+          )}
+
+          <div className="overflow-x-auto rounded-md border">
+            <table className="w-full min-w-[34rem] text-left text-sm">
+              <thead className="bg-secondary">
+                <tr>
+                  <th className="px-3 py-2 font-medium">案號</th>
+                  <th className="px-3 py-2 font-medium">姓名</th>
+                  <th className="px-3 py-2 font-medium">鎖定時間</th>
+                  <th className="px-3 py-2 font-medium">金額</th>
+                </tr>
+              </thead>
+              <tbody>
+                {batch.items.map((item) => (
+                  <tr key={item.id} className="border-t">
+                    <td className="px-3 py-2 font-medium">{item.caseCode}</td>
+                    <td className="px-3 py-2">{item.elderName}</td>
+                    <td className="px-3 py-2">
+                      {new Date(item.lockedAt).toLocaleString("zh-TW", {
+                        month: "2-digit",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </td>
+                    <td className="px-3 py-2">{item.totalFee.toLocaleString("zh-TW")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <Button disabled={!canCalculatePayments} onClick={createBatch}>
+            <CircleDollarSign className="h-4 w-4" />
+            建立核銷批次
+          </Button>
+          {!canCalculatePayments && (
+            <p className="text-sm text-muted-foreground">
+              目前角色沒有建立核銷批次權限。
+            </p>
+          )}
+        </div>
+      )}
+
+      {message && (
+        <p className="mt-3 rounded-md bg-secondary p-3 text-sm text-muted-foreground">
+          {message}
+        </p>
+      )}
+    </section>
+  );
+}
+
+function MiniMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border bg-background p-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 font-semibold">{value}</p>
+    </div>
+  );
+}

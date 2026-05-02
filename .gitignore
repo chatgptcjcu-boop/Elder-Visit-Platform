@@ -1,0 +1,35 @@
+# macOS
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+vendor/
+.next/
+
+# Build output
+dist/
+build/
+coverage/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Editor
+.idea/
+.vscode/
+
+# Next.js
+next-env.d.ts
+tsconfig.tsbuildinfo

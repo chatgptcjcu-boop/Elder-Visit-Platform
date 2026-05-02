@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 210 22% 96%;
+  --foreground: 220 28% 10%;
+  --card: 0 0% 100%;
+  --card-foreground: 220 28% 10%;
+  --primary: 214 89% 52%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 216 24% 93%;
+  --secondary-foreground: 220 24% 16%;
+  --muted: 216 21% 91%;
+  --muted-foreground: 220 11% 42%;
+  --accent: 187 86% 42%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 72% 47%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 214 18% 84%;
+  --input: 214 18% 84%;
+  --ring: 214 89% 52%;
+  --radius: 0.5rem;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, hsl(213 35% 97%) 0%, hsl(var(--background)) 18rem),
+    hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}

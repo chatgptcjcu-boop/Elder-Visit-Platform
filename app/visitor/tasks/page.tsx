@@ -1,0 +1,24 @@
+import { AppShell } from "@/components/layout/app-shell";
+import { TaskCard } from "@/components/visitor/task-card";
+import { getRepository } from "@/lib/repositories";
+
+export default async function VisitorTasksPage() {
+  const tasks = await getRepository().getVisitorTasks();
+
+  return (
+    <AppShell active="tasks">
+      <section className="rounded-lg border bg-card p-4">
+        <h1 className="text-2xl font-semibold">訪員任務</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          今日任務依 Workspace、訪員資格、風險等級與訪視次數排序。
+        </p>
+      </section>
+
+      <section className="grid gap-3 lg:grid-cols-3">
+        {tasks.map(({ schedule, elderCase }) => {
+          return <TaskCard key={schedule.id} elderCase={elderCase} schedule={schedule} />;
+        })}
+      </section>
+    </AppShell>
+  );
+}
