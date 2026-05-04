@@ -1,5 +1,7 @@
 import type { ElderCase, VisitSchedule, VisitSubmission } from "@/lib/domain/types";
 
+export const missedVisitClosureAttempt = 3;
+
 export function getRiskLabel(riskLevel: ElderCase["riskLevel"]) {
   const labels = {
     low: "低風險",
@@ -40,7 +42,43 @@ export function validateVisitSubmission(submission: VisitSubmission) {
   };
 }
 
+export function getMissedVisitPolicy(schedule: VisitSchedule, submission: VisitSubmission) {
+  if (submission.visitResult !== "未遇") {
+    return {
+      applies: false,
+      canClose: false,
+      nextAttempt: null,
+      message: "本次不是未遇案件，依一般訪視流程送督導與稽核。",
+    };
+  }
+
+  if (schedule.visitAttempt >= missedVisitClosureAttempt) {
+    return {
+      applies: true,
+      canClose: true,
+      nextAttempt: null,
+      message: "已達第 3 次未遇，可送督導確認後以未遇結案。",
+    };
+  }
+
+  return {
+    applies: true,
+    canClose: false,
+    nextAttempt: schedule.visitAttempt + 1,
+    message: `目前是第 ${schedule.visitAttempt} 次未遇，不可直接結案；送出後應安排第 ${
+      schedule.visitAttempt + 1
+    } 次訪視。`,
+  };
+}
+
 export function getPaymentEligibility(submission: VisitSubmission) {
+  if (submission.visitResult === "未遇") {
+    return {
+      eligible: false,
+      reason: "未遇案件不直接核銷，需累計 3 次未遇並由督導確認後結案。",
+    };
+  }
+
   if (!submission.consentSigned || !submission.signatureDataUrl?.length) {
     return {
       eligible: false,

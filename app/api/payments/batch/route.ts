@@ -1,19 +1,26 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { requireCapability } from "@/lib/api/authorization";
-import { createPaymentBatch, createPaymentBatchPreview } from "@/lib/domain/payments";
+import { getRepository } from "@/lib/repositories";
 
-export function GET() {
+export async function GET() {
+  const repository = getRepository();
+  const data = await repository.getPaymentBatchPreview();
+
   return NextResponse.json({
-    data: createPaymentBatchPreview(),
+    data: data.batch,
+    feeRule: data.feeRule,
   });
 }
 
-export function POST(request: NextRequest) {
+export async function POST(request: NextRequest) {
   const forbidden = requireCapability(request, "payments.calculate");
   if (forbidden) return forbidden;
+  const repository = getRepository();
+  const data = await repository.createPaymentBatch();
 
   return NextResponse.json({
-    data: createPaymentBatch(),
+    data: data.batch,
+    feeRule: data.feeRule,
   });
 }

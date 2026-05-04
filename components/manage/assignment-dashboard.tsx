@@ -19,12 +19,25 @@ import { getAssignmentFormChecklist } from "@/lib/domain/visit-form-flow";
 import type {
   AssignmentDecisionResult,
   AssignmentRecommendation,
+  VisitorWorkerType,
   VisitorProfile,
 } from "@/lib/domain/types";
 
 type AssignmentPayload = {
   visitors: VisitorProfile[];
   recommendations: AssignmentRecommendation[];
+};
+
+const workerTypeLabels: Record<VisitorWorkerType, string> = {
+  social_affairs: "社政",
+  civil_affairs: "民政",
+  general: "一般",
+};
+
+const certificateLabels: Record<VisitorProfile["certificateStatus"], string> = {
+  valid: "有效",
+  missing: "待補",
+  expired: "逾期",
 };
 
 export function AssignmentDashboard() {
@@ -75,7 +88,7 @@ export function AssignmentDashboard() {
           <h1 className="text-2xl font-semibold">派案管理</h1>
         </div>
         <p className="mt-2 text-sm text-muted-foreground">
-          依區域、風險、訪員容量與訓練狀態產生派案建議，保留人工覆核。
+          依里別、民政/社政身分、共訪需求、訪員資格、容量與風險產生派案建議，保留人工覆核。
         </p>
       </section>
 
@@ -104,18 +117,18 @@ export function AssignmentDashboard() {
           />
           <AssignmentFlowStep
             icon={Route}
-            title="區域比對"
-            detail="優先比對長者所在地與訪員服務區域。"
+            title="里別比對"
+            detail="先比對長者所在里別，再比對行政區。"
           />
           <AssignmentFlowStep
             icon={BrainCircuit}
-            title="規則評分"
-            detail="依容量、訓練、風險與距離產生建議分數。"
+            title="身分與共訪"
+            detail="確認社政、民政與共訪搭配是否符合案件需求。"
           />
           <AssignmentFlowStep
             icon={ShieldCheck}
-            title="主管覆核"
-            detail="有容量不足或訓練缺口時，先送主管覆核。"
+            title="資格覆核"
+            detail="訪員證、受訓紀錄、匯款帳戶缺漏時先送主管覆核。"
           />
           <AssignmentFlowStep
             icon={ClipboardCheck}
@@ -125,7 +138,11 @@ export function AssignmentDashboard() {
         </div>
 
         <div className="mt-4 grid gap-3 lg:grid-cols-4">
-          <RuleCard label="同區域" value="+20" detail="降低移動成本，提升訪查效率。" />
+          <RuleCard label="同里別" value="+25" detail="優先派給熟悉該里別的訪查人員。" />
+          <RuleCard label="民政/社政符合" value="+15" detail="依案件需求比對訪員身分。" />
+          <RuleCard label="共訪搭配完整" value="+10" detail="需共訪案件必須有民政與社政雙角色。" />
+          <RuleCard label="資格與匯款完整" value="+15" detail="訪員證、受訓與帳戶完整才可直接派案。" />
+          <RuleCard label="同區域" value="+15" detail="降低移動成本，提升訪查效率。" />
           <RuleCard label="仍有容量" value="+15" detail="未超過每日任務上限才建議派案。" />
           <RuleCard label="完成訓練" value="+10" detail="涉及同意書或簽名案件需具備訓練。" />
           <RuleCard label="高風險優先" value="+15" detail="高風險個案會提高排序權重。" />
@@ -184,6 +201,13 @@ export function AssignmentDashboard() {
                           {elderCase?.caseCode ?? recommendation.caseId} · 第{" "}
                           {schedule?.visitAttempt ?? "-"} 次訪視
                         </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {elderCase?.district} · {elderCase?.village} ·{" "}
+                          {elderCase?.requiredVisitorTypes
+                            .map((type) => workerTypeLabels[type])
+                            .join("＋")}
+                          {elderCase?.coVisitRequired ? " · 需共訪" : ""}
+                        </p>
                       </div>
                       <span className="rounded-md bg-secondary px-2 py-1 text-xs">
                         {recommendation.score} 分
@@ -230,7 +254,11 @@ export function AssignmentDashboard() {
                           <h3 className="font-semibold">{visitor.fullName}</h3>
                         </div>
                         <p className="mt-2 text-sm text-muted-foreground">
-                          {visitor.districtCoverage.join("、")} · {visitor.status}
+                          {workerTypeLabels[visitor.workerType]} · {visitor.districtCoverage.join("、")} ·{" "}
+                          {visitor.status}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          服務里別：{visitor.villageCoverage.join("、")}
                         </p>
                       </div>
                       <span className="rounded-md bg-secondary px-2 py-1 text-xs">
@@ -244,6 +272,17 @@ export function AssignmentDashboard() {
                       今日任務 {visitor.activeTaskCount}/{visitor.maxDailyTasks} · 已訓練：
                       {visitor.trainedModules.join("、")}
                     </p>
+                    <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-3">
+                      <span className="rounded-md bg-secondary px-2 py-1">
+                        訪員證：{certificateLabels[visitor.certificateStatus]}
+                      </span>
+                      <span className="rounded-md bg-secondary px-2 py-1">
+                        受訓：{visitor.trainingDate ?? "待補"}
+                      </span>
+                      <span className="rounded-md bg-secondary px-2 py-1">
+                        匯款：{visitor.remittanceReady ? `末五碼 ${visitor.bankAccountLast5}` : "待建檔"}
+                      </span>
+                    </div>
                     <Button
                       className="mt-3 w-full"
                       variant={matched ? "default" : "outline"}

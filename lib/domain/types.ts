@@ -248,6 +248,9 @@ export type ElderCase = {
   phone: string;
   address: string;
   district: string;
+  village: string;
+  requiredVisitorTypes: VisitorWorkerType[];
+  coVisitRequired: boolean;
   riskLevel: "low" | "medium" | "high";
   status: "pending" | "assigned" | "visited" | "auditing" | "closed";
 };
@@ -274,6 +277,7 @@ export type VisitSchedule = {
   workspaceId: string;
   caseId: string;
   visitorId: string;
+  coVisitorId: string | null;
   visitDate: string;
   visitAttempt: number;
   status: "pending" | "in_progress" | "submitted" | "needs_follow_up";
@@ -281,13 +285,22 @@ export type VisitSchedule = {
   requiredFormTemplateIds: string[];
 };
 
+export type VisitorWorkerType = "social_affairs" | "civil_affairs" | "general";
+
 export type VisitorProfile = {
   id: string;
   fullName: string;
+  workerType: VisitorWorkerType;
   districtCoverage: string[];
+  villageCoverage: string[];
   activeTaskCount: number;
   maxDailyTasks: number;
   trainedModules: WorkspaceModuleKey[];
+  visitorCertificateNo: string | null;
+  certificateStatus: "valid" | "missing" | "expired";
+  trainingDate: string | null;
+  bankAccountLast5: string | null;
+  remittanceReady: boolean;
   status: "available" | "busy" | "inactive";
 };
 
@@ -437,8 +450,19 @@ export type PaymentBatchItem = {
   elderName: string;
   visitRecordId: string;
   lockedAt: string;
+  visitFee: number;
+  dataProcessingFee: number;
   totalFee: number;
   status: "locked" | "exported";
+};
+
+export type PaymentFeeRule = {
+  visitFee: number;
+  dataProcessingFee: number;
+  totalPerCompletedVisit: number;
+  currency: string;
+  effectiveFrom: string;
+  description: string;
 };
 
 export type PaymentBatch = {
@@ -518,7 +542,7 @@ export type WorkflowSummary = {
 export type ExportTemplateSummary = {
   id: string;
   name: string;
-  exportType: "csv" | "xlsx" | "pdf";
+  exportType: "csv" | "xlsx" | "pdf" | "docx";
   entityType: string;
   columns: Array<{
     key: string;

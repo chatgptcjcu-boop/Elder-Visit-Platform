@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import { CircleDollarSign, PackageCheck } from "lucide-react";
 import { useCan } from "@/components/auth/permission-provider";
 import { Button } from "@/components/ui/button";
-import type { PaymentBatch } from "@/lib/domain/types";
+import { paymentFeeRules } from "@/lib/domain/payments";
+import type { PaymentBatch, PaymentFeeRule } from "@/lib/domain/types";
 
 export function PaymentBatchPanel() {
   const canCalculatePayments = useCan("payments.calculate");
   const [batch, setBatch] = useState<PaymentBatch | null>(null);
+  const [feeRule, setFeeRule] = useState<PaymentFeeRule>(paymentFeeRules);
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -17,14 +19,16 @@ export function PaymentBatchPanel() {
 
   async function loadPreview() {
     const response = await fetch("/api/payments/batch");
-    const result = (await response.json()) as { data?: PaymentBatch };
+    const result = (await response.json()) as { data?: PaymentBatch; feeRule?: PaymentFeeRule };
     setBatch(result.data ?? null);
+    setFeeRule(result.feeRule ?? paymentFeeRules);
   }
 
   async function createBatch() {
     const response = await fetch("/api/payments/batch", { method: "POST" });
-    const result = (await response.json()) as { data?: PaymentBatch };
+    const result = (await response.json()) as { data?: PaymentBatch; feeRule?: PaymentFeeRule };
     setBatch(result.data ?? null);
+    setFeeRule(result.feeRule ?? paymentFeeRules);
     setMessage(result.data ? `已建立核銷批次 ${result.data.batchNo}` : "建立批次失敗。");
   }
 
@@ -36,6 +40,14 @@ export function PaymentBatchPanel() {
       </div>
       <p className="mt-2 text-sm text-muted-foreground">
         將已鎖定的核銷項目彙整成批次，確認總額後再交給匯出模板。
+      </p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <MiniMetric label="訪視費" value={`${feeRule.visitFee} 元`} />
+        <MiniMetric label="資料處理費" value={`${feeRule.dataProcessingFee} 元`} />
+        <MiniMetric label="每案合計" value={`${feeRule.totalPerCompletedVisit} 元`} />
+      </div>
+      <p className="mt-2 rounded-md bg-secondary p-3 text-sm text-muted-foreground">
+        {feeRule.description}
       </p>
 
       {batch && (
@@ -59,6 +71,8 @@ export function PaymentBatchPanel() {
                   <th className="px-3 py-2 font-medium">案號</th>
                   <th className="px-3 py-2 font-medium">姓名</th>
                   <th className="px-3 py-2 font-medium">鎖定時間</th>
+                  <th className="px-3 py-2 font-medium">訪視費</th>
+                  <th className="px-3 py-2 font-medium">資料費</th>
                   <th className="px-3 py-2 font-medium">金額</th>
                 </tr>
               </thead>
@@ -75,6 +89,8 @@ export function PaymentBatchPanel() {
                         minute: "2-digit",
                       })}
                     </td>
+                    <td className="px-3 py-2">{item.visitFee.toLocaleString("zh-TW")}</td>
+                    <td className="px-3 py-2">{item.dataProcessingFee.toLocaleString("zh-TW")}</td>
                     <td className="px-3 py-2">{item.totalFee.toLocaleString("zh-TW")}</td>
                   </tr>
                 ))}

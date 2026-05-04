@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Archive, CheckCircle2, Database, TriangleAlert } from "lucide-react";
 import { PricingDashboard } from "@/components/manage/pricing-dashboard";
 import { ApiGovernancePanel } from "@/components/system/api-governance-panel";
+import { paymentFeeRules } from "@/lib/domain/payments";
 import {
   getLogTieringSummary,
   getLogTieringWarnings,
@@ -12,12 +13,13 @@ import {
 } from "@/lib/domain/log-tiering";
 import { getSystemStatus } from "@/lib/system/env";
 
-type ParameterTab = "runtime" | "logs" | "api" | "pricing";
+type ParameterTab = "runtime" | "logs" | "api" | "payment" | "pricing";
 
 const parameterTabs: Array<{ key: ParameterTab; label: string }> = [
   { key: "runtime", label: "連線參數" },
   { key: "logs", label: "日誌分層" },
   { key: "api", label: "API 維運" },
+  { key: "payment", label: "核銷費率" },
   { key: "pricing", label: "方案限制" },
 ];
 
@@ -138,6 +140,28 @@ export function SystemStatusPanel() {
 
       {activeTab === "api" && (
         <ApiGovernancePanel />
+      )}
+
+      {activeTab === "payment" && (
+        <section className="rounded-lg border bg-card p-4">
+          <div className="flex items-center gap-2">
+            <Database className="h-5 w-5 text-primary" />
+            <h2 className="font-semibold">核銷費率參數</h2>
+          </div>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            目前依專案規則設定為訪視費 180 元、資料處理費 30 元。正式接上 Supabase 後，這組費率應由
+            payment rules 資料表控管版本、生效日與覆核紀錄。
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-4">
+            <MiniStat label="訪視費" value={`${paymentFeeRules.visitFee} 元`} />
+            <MiniStat label="資料處理費" value={`${paymentFeeRules.dataProcessingFee} 元`} />
+            <MiniStat label="每案合計" value={`${paymentFeeRules.totalPerCompletedVisit} 元`} />
+            <MiniStat label="生效日" value={paymentFeeRules.effectiveFrom} />
+          </div>
+          <div className="mt-4 rounded-md bg-secondary p-3 text-sm text-muted-foreground">
+            {paymentFeeRules.description}
+          </div>
+        </section>
       )}
 
       {activeTab === "pricing" && (

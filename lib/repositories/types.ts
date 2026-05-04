@@ -1,9 +1,14 @@
 import type {
   ActivityItem,
+  AssignmentDecisionResult,
+  AssignmentRecommendation,
   DashboardMetric,
   ElderCase,
+  PaymentBatch,
+  PaymentFeeRule,
   Unit,
   VisitSchedule,
+  VisitorProfile,
   Workspace,
 } from "@/lib/domain/types";
 
@@ -30,6 +35,16 @@ export type CaseRegistrySummary = {
   closed: number;
 };
 
+export type AssignmentDashboardData = {
+  visitors: VisitorProfile[];
+  recommendations: AssignmentRecommendation[];
+};
+
+export type PaymentBatchData = {
+  batch: PaymentBatch;
+  feeRule: PaymentFeeRule;
+};
+
 export type AppRepository = {
   getCurrentWorkspace(): Promise<Workspace>;
   getWorkspaces(): Promise<WorkspaceWithUnit[]>;
@@ -38,4 +53,8 @@ export type AppRepository = {
   getVisitorTasks(): Promise<VisitorTask[]>;
   getCaseRegistry(): Promise<CaseRegistryItem[]>;
   getCaseRegistrySummary(): Promise<CaseRegistrySummary>;
+  getAssignmentDashboard(): Promise<AssignmentDashboardData>;
+  confirmAssignment(recommendationId: string): Promise<AssignmentDecisionResult>;
+  getPaymentBatchPreview(): Promise<PaymentBatchData>;
+  createPaymentBatch(): Promise<PaymentBatchData>;
 };

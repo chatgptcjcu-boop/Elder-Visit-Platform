@@ -1,8 +1,6 @@
+-- Combined Supabase migrations. Run individual files in production when possible.
 
--- ============================================================
 -- supabase/migrations/0001_governance_schema.sql
--- ============================================================
-
 create extension if not exists pgcrypto;
 
 create table public.accounts (
@@ -269,10 +267,8 @@ create policy "users can read effective permissions"
 on public.effective_permissions for select
 using (account_id = public.current_account_id());
 
--- ============================================================
--- supabase/migrations/0002_onboarding_blueprint_governance.sql
--- ============================================================
 
+-- supabase/migrations/0002_onboarding_blueprint_governance.sql
 create table public.onboarding_sessions (
   id uuid primary key default gen_random_uuid(),
   account_id uuid references public.accounts(id) on delete cascade,
@@ -479,10 +475,8 @@ create policy "workspace members can read responsibility"
 on public.workspace_responsibility for select
 using (public.is_active_workspace_member(workspace_id));
 
--- ============================================================
--- supabase/migrations/0003_elder_visit_operations.sql
--- ============================================================
 
+-- supabase/migrations/0003_elder_visit_operations.sql
 create table public.elder_cases (
   id uuid primary key default gen_random_uuid(),
   unit_id uuid not null references public.units(id) on delete cascade,
@@ -601,10 +595,8 @@ create policy "workspace members can insert visit records"
 on public.visit_records for insert
 with check (public.is_active_workspace_member(workspace_id));
 
--- ============================================================
--- supabase/migrations/0004_workspace_settings_governance.sql
--- ============================================================
 
+-- supabase/migrations/0004_workspace_settings_governance.sql
 create index idx_workspace_settings_workspace on public.workspace_settings(workspace_id);
 create index idx_workspace_responsibility_workspace on public.workspace_responsibility(workspace_id);
 create index idx_log_retention_workspace on public.log_retention_policies(workspace_id, entity_type);
@@ -637,10 +629,8 @@ create policy "workspace managers can insert soft delete events"
 on public.workspace_soft_delete_events for insert
 with check (public.is_active_workspace_member(workspace_id));
 
--- ============================================================
--- supabase/migrations/0005_import_engine.sql
--- ============================================================
 
+-- supabase/migrations/0005_import_engine.sql
 create table public.import_templates (
   id uuid primary key default gen_random_uuid(),
   unit_id uuid not null references public.units(id) on delete cascade,
@@ -745,10 +735,8 @@ using (
   )
 );
 
--- ============================================================
--- supabase/migrations/0006_parameter_engines.sql
--- ============================================================
 
+-- supabase/migrations/0006_parameter_engines.sql
 create table public.form_templates (
   id uuid primary key default gen_random_uuid(),
   unit_id uuid references public.units(id) on delete cascade,
@@ -953,10 +941,8 @@ create policy "workspace members can read kpi snapshots"
 on public.kpi_snapshots for select
 using (public.is_active_workspace_member(workspace_id));
 
--- ============================================================
--- supabase/migrations/0007_incidents_notifications.sql
--- ============================================================
 
+-- supabase/migrations/0007_incidents_notifications.sql
 create table public.incident_reports (
   id uuid primary key default gen_random_uuid(),
   unit_id uuid not null references public.units(id) on delete cascade,
@@ -1035,10 +1021,8 @@ create policy "workspace members can read notification logs"
 on public.notification_logs for select
 using (public.is_active_workspace_member(workspace_id));
 
--- ============================================================
--- supabase/migrations/0008_export_jobs.sql
--- ============================================================
 
+-- supabase/migrations/0008_export_jobs.sql
 create table public.export_jobs (
   id uuid primary key default gen_random_uuid(),
   unit_id uuid not null references public.units(id) on delete cascade,
@@ -1074,10 +1058,8 @@ create policy "workspace members can read export logs"
 on public.export_logs for select
 using (public.is_active_workspace_member(workspace_id));
 
--- ============================================================
--- supabase/migrations/0009_auth_account_bridge.sql
--- ============================================================
 
+-- supabase/migrations/0009_auth_account_bridge.sql
 create or replace function public.handle_new_auth_user()
 returns trigger
 language plpgsql
@@ -1115,10 +1097,8 @@ create policy "authenticated users can insert own account"
 on public.accounts for insert
 with check (auth.uid() = auth_user_id);
 
--- ============================================================
--- supabase/migrations/0010_consent_governance.sql
--- ============================================================
 
+-- supabase/migrations/0010_consent_governance.sql
 create table if not exists public.consent_usage_logs (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
@@ -1153,10 +1133,8 @@ create policy "workspace members can create consent usage logs"
 on public.consent_usage_logs for insert
 with check (public.is_active_workspace_member(workspace_id));
 
--- ============================================================
--- supabase/migrations/0011_log_tiering.sql
--- ============================================================
 
+-- supabase/migrations/0011_log_tiering.sql
 alter table public.log_retention_policies
   add column if not exists tier text not null default 'active',
   add column if not exists contains_personal_data boolean not null default false,
@@ -1178,10 +1156,8 @@ create index if not exists idx_archived_logs_purge
 on public.archived_logs(purge_after)
 where purge_after is not null;
 
--- ============================================================
--- supabase/migrations/0012_blueprint_migration_previews.sql
--- ============================================================
 
+-- supabase/migrations/0012_blueprint_migration_previews.sql
 create table if not exists public.blueprint_migration_previews (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
@@ -1209,10 +1185,8 @@ create policy "workspace members can create blueprint migration previews"
 on public.blueprint_migration_previews for insert
 with check (public.is_active_workspace_member(workspace_id));
 
--- ============================================================
--- supabase/migrations/0013_audit_decisions.sql
--- ============================================================
 
+-- supabase/migrations/0013_audit_decisions.sql
 create table if not exists public.audit_decisions (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
@@ -1239,10 +1213,8 @@ create policy "workspace members can create audit decisions"
 on public.audit_decisions for insert
 with check (public.is_active_workspace_member(workspace_id));
 
--- ============================================================
--- supabase/migrations/0014_payment_locks.sql
--- ============================================================
 
+-- supabase/migrations/0014_payment_locks.sql
 create table if not exists public.payment_locks (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
@@ -1267,10 +1239,8 @@ create policy "workspace members can create payment locks"
 on public.payment_locks for insert
 with check (public.is_active_workspace_member(workspace_id));
 
--- ============================================================
--- supabase/migrations/0015_payment_batches.sql
--- ============================================================
 
+-- supabase/migrations/0015_payment_batches.sql
 create table if not exists public.payment_batches (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
@@ -1321,10 +1291,8 @@ create policy "workspace members can create payment batch items"
 on public.payment_batch_items for insert
 with check (public.is_active_workspace_member(workspace_id));
 
--- ============================================================
--- supabase/migrations/0016_assignment_recommendations.sql
--- ============================================================
 
+-- supabase/migrations/0016_assignment_recommendations.sql
 create table if not exists public.visitor_profiles (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
@@ -1375,10 +1343,8 @@ create policy "workspace members can create assignment recommendations"
 on public.assignment_recommendations for insert
 with check (public.is_active_workspace_member(workspace_id));
 
--- ============================================================
--- supabase/migrations/0017_case_registry_status.sql
--- ============================================================
 
+-- supabase/migrations/0017_case_registry_status.sql
 create table if not exists public.case_status_logs (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
@@ -1403,10 +1369,8 @@ create policy "workspace members can create case status logs"
 on public.case_status_logs for insert
 with check (public.is_active_workspace_member(workspace_id));
 
--- ============================================================
--- supabase/migrations/0018_kpi_reports.sql
--- ============================================================
 
+-- supabase/migrations/0018_kpi_reports.sql
 create table if not exists public.kpi_reports (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
@@ -1456,10 +1420,8 @@ create policy "workspace members can create kpi report items"
 on public.kpi_report_items for insert
 with check (public.is_active_workspace_member(workspace_id));
 
--- ============================================================
--- supabase/migrations/0019_incident_decisions.sql
--- ============================================================
 
+-- supabase/migrations/0019_incident_decisions.sql
 create table if not exists public.incident_decisions (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
@@ -1484,10 +1446,8 @@ create policy "workspace members can create incident decisions"
 on public.incident_decisions for insert
 with check (public.is_active_workspace_member(workspace_id));
 
--- ============================================================
--- supabase/migrations/0020_role_permissions.sql
--- ============================================================
 
+-- supabase/migrations/0020_role_permissions.sql
 create table if not exists public.workspace_roles (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
@@ -1533,10 +1493,8 @@ create policy "workspace managers can create permission logs"
 on public.workspace_permission_logs for insert
 with check (public.is_active_workspace_member(workspace_id));
 
--- ============================================================
--- supabase/migrations/0021_user_registration_requests.sql
--- ============================================================
 
+-- supabase/migrations/0021_user_registration_requests.sql
 create table if not exists public.workspace_registration_requests (
   id uuid primary key default gen_random_uuid(),
   account_id uuid references public.accounts(id) on delete cascade,
@@ -1575,10 +1533,8 @@ using (
   and public.is_active_workspace_member(requested_workspace_id)
 );
 
--- ============================================================
--- supabase/migrations/0022_sponsor_governance.sql
--- ============================================================
 
+-- supabase/migrations/0022_sponsor_governance.sql
 create table if not exists public.sponsor_partners (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
@@ -1659,10 +1615,8 @@ create policy "workspace members can create sponsor exposure logs"
 on public.sponsor_exposure_logs for insert
 with check (public.is_active_workspace_member(workspace_id));
 
--- ============================================================
--- supabase/migrations/0023_workgroup_communications.sql
--- ============================================================
 
+-- supabase/migrations/0023_workgroup_communications.sql
 create table if not exists public.workgroup_messages (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
@@ -1776,10 +1730,8 @@ on public.line_channel_bindings for all
 using (public.is_active_workspace_member(workspace_id))
 with check (public.is_active_workspace_member(workspace_id));
 
--- ============================================================
--- supabase/migrations/0024_government_forms.sql
--- ============================================================
 
+-- supabase/migrations/0024_government_forms.sql
 create table if not exists public.government_form_templates (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid references public.workspaces(id) on delete cascade,
@@ -1983,10 +1935,160 @@ create policy "workspace members can create confidentiality agreements"
 on public.visitor_confidentiality_agreements for insert
 with check (public.is_active_workspace_member(workspace_id));
 
--- ============================================================
--- supabase/seed.sql
--- ============================================================
 
+-- supabase/migrations/0025_assignment_payment_policy.sql
+alter table public.elder_cases
+  add column if not exists village text,
+  add column if not exists required_visitor_types jsonb not null default '[]'::jsonb,
+  add column if not exists co_visit_required boolean not null default false;
+
+alter table public.visit_schedule
+  add column if not exists co_visitor_id uuid references public.visitors(id) on delete set null,
+  add column if not exists closure_policy text,
+  add column if not exists can_close_after_attempt int not null default 3;
+
+alter table public.visit_records
+  add column if not exists missed_visit_sequence int,
+  add column if not exists closure_reason text,
+  add column if not exists closure_confirmed_by uuid references public.accounts(id) on delete set null,
+  add column if not exists closure_confirmed_at timestamptz;
+
+alter table public.visitors
+  add column if not exists worker_type text not null default 'general',
+  add column if not exists village_coverage jsonb not null default '[]'::jsonb,
+  add column if not exists certificate_status text not null default 'missing',
+  add column if not exists bank_account_last5 text,
+  add column if not exists remittance_ready boolean not null default false;
+
+alter table public.visitor_profiles
+  add column if not exists worker_type text not null default 'general',
+  add column if not exists village_coverage jsonb not null default '[]'::jsonb,
+  add column if not exists visitor_certificate_no text,
+  add column if not exists certificate_status text not null default 'missing',
+  add column if not exists training_date date,
+  add column if not exists bank_account_last5 text,
+  add column if not exists remittance_ready boolean not null default false;
+
+alter table public.payment_batch_items
+  add column if not exists visit_fee numeric not null default 0,
+  add column if not exists data_processing_fee numeric not null default 0;
+
+create table if not exists public.payment_fee_rules (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  rule_code text not null,
+  visit_fee numeric not null default 180,
+  data_processing_fee numeric not null default 30,
+  currency text not null default 'TWD',
+  effective_from date not null default current_date,
+  effective_to date,
+  status text not null default 'active',
+  review_note text,
+  created_by uuid references public.accounts(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (workspace_id, rule_code, effective_from)
+);
+
+create index if not exists idx_elder_cases_village
+on public.elder_cases(workspace_id, district, village);
+
+create index if not exists idx_visitors_worker_type
+on public.visitors(workspace_id, worker_type, certificate_status, remittance_ready);
+
+create index if not exists idx_payment_fee_rules_workspace
+on public.payment_fee_rules(workspace_id, status, effective_from desc);
+
+alter table public.payment_fee_rules enable row level security;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'visitor_profiles'
+      and policyname = 'workspace members can create visitor profiles'
+  ) then
+    create policy "workspace members can create visitor profiles"
+    on public.visitor_profiles for insert
+    with check (public.is_active_workspace_member(workspace_id));
+  end if;
+end $$;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'visitor_profiles'
+      and policyname = 'workspace members can update visitor profiles'
+  ) then
+    create policy "workspace members can update visitor profiles"
+    on public.visitor_profiles for update
+    using (public.is_active_workspace_member(workspace_id))
+    with check (public.is_active_workspace_member(workspace_id));
+  end if;
+end $$;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'visitor_profiles'
+      and policyname = 'workspace members can delete visitor profiles'
+  ) then
+    create policy "workspace members can delete visitor profiles"
+    on public.visitor_profiles for delete
+    using (public.is_active_workspace_member(workspace_id));
+  end if;
+end $$;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'payment_fee_rules'
+      and policyname = 'workspace members can read payment fee rules'
+  ) then
+    create policy "workspace members can read payment fee rules"
+    on public.payment_fee_rules for select
+    using (public.is_active_workspace_member(workspace_id));
+  end if;
+end $$;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'payment_fee_rules'
+      and policyname = 'workspace members can create payment fee rules'
+  ) then
+    create policy "workspace members can create payment fee rules"
+    on public.payment_fee_rules for insert
+    with check (public.is_active_workspace_member(workspace_id));
+  end if;
+end $$;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'payment_fee_rules'
+      and policyname = 'workspace members can update payment fee rules'
+  ) then
+    create policy "workspace members can update payment fee rules"
+    on public.payment_fee_rules for update
+    using (public.is_active_workspace_member(workspace_id))
+    with check (public.is_active_workspace_member(workspace_id));
+  end if;
+end $$;
+
+
+-- supabase/seed.sql
 insert into public.platform_blueprints (
   id,
   blueprint_name,
@@ -2186,3 +2288,32 @@ insert into public.workspace_memberships (
   '["dashboard.read", "visits.submit"]'::jsonb,
   'active'
 ) on conflict (workspace_id, account_id) do nothing;
+
+insert into public.payment_fee_rules (
+  workspace_id,
+  rule_code,
+  visit_fee,
+  data_processing_fee,
+  currency,
+  effective_from,
+  status,
+  review_note,
+  created_by
+) values (
+  'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+  'elder_visit_default_115',
+  180,
+  30,
+  'TWD',
+  '2026-04-25',
+  'active',
+  '訪視費 180 元、資料處理費 30 元。',
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+) on conflict (workspace_id, rule_code, effective_from) do update
+set
+  visit_fee = excluded.visit_fee,
+  data_processing_fee = excluded.data_processing_fee,
+  currency = excluded.currency,
+  status = excluded.status,
+  review_note = excluded.review_note,
+  updated_at = now();

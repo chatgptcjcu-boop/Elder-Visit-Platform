@@ -58,7 +58,7 @@ export function ExportTool() {
             <h1 className="text-xl font-semibold">匯出報表</h1>
           </div>
           <p className="mt-2 text-sm text-muted-foreground">
-            依模板、用途與同意治理規則產生匯出內容，預覽確認後再建立檔案。
+            依模板、用途與同意治理規則產生匯出內容。已填關懷表可做 DOCX 欄位對照，後台 Excel 可供社會局匯入中央系統。
           </p>
         </div>
 
@@ -115,6 +115,21 @@ export function ExportTool() {
           <Download className="h-4 w-4" />
           產生匯出內容
         </Button>
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className="rounded-md border bg-background p-3 text-sm text-muted-foreground">
+          <p className="font-medium text-foreground">已填關懷表</p>
+          <p className="mt-1">
+            目前已建立 DOCX 欄位對照模板；下一步要把新北市政府 Word 空白表套版成真正可下載的已勾選 DOCX。
+          </p>
+        </div>
+        <div className="rounded-md border bg-background p-3 text-sm text-muted-foreground">
+          <p className="font-medium text-foreground">中央系統 Excel</p>
+          <p className="mt-1">
+            已建立社會局中央系統匯入 Excel 欄位模板；正式欄位順序需依社會局提供格式再鎖定。
+          </p>
+        </div>
       </div>
 
       {preview.governance.warnings.length > 0 && (

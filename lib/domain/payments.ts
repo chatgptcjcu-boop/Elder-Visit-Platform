@@ -1,4 +1,13 @@
-import type { PaymentBatch, PaymentBatchItem } from "@/lib/domain/types";
+import type { PaymentBatch, PaymentBatchItem, PaymentFeeRule } from "@/lib/domain/types";
+
+export const paymentFeeRules: PaymentFeeRule = {
+  visitFee: 180,
+  dataProcessingFee: 30,
+  totalPerCompletedVisit: 210,
+  currency: "元",
+  effectiveFrom: "2026-04-25",
+  description: "訪視費 180 元，加資料處理費 30 元；未遇、拒訪或資料不完整案件需督導判定，不直接核銷。",
+};
 
 export const lockedPaymentItems: PaymentBatchItem[] = [
   {
@@ -7,7 +16,9 @@ export const lockedPaymentItems: PaymentBatchItem[] = [
     elderName: "林阿梅",
     visitRecordId: "visit_001",
     lockedAt: "2026-04-26T08:05:00+08:00",
-    totalFee: 750,
+    visitFee: paymentFeeRules.visitFee,
+    dataProcessingFee: paymentFeeRules.dataProcessingFee,
+    totalFee: paymentFeeRules.totalPerCompletedVisit,
     status: "locked",
   },
   {
@@ -16,16 +27,20 @@ export const lockedPaymentItems: PaymentBatchItem[] = [
     elderName: "張秀蘭",
     visitRecordId: "visit_003",
     lockedAt: "2026-04-26T08:18:00+08:00",
-    totalFee: 750,
+    visitFee: paymentFeeRules.visitFee,
+    dataProcessingFee: paymentFeeRules.dataProcessingFee,
+    totalFee: paymentFeeRules.totalPerCompletedVisit,
     status: "locked",
   },
 ];
 
-export function createPaymentBatchPreview(): PaymentBatch {
-  const totalAmount = lockedPaymentItems.reduce((sum, item) => sum + item.totalFee, 0);
+export function createPaymentBatchPreview(
+  items: PaymentBatchItem[] = lockedPaymentItems,
+): PaymentBatch {
+  const totalAmount = items.reduce((sum, item) => sum + item.totalFee, 0);
   const warnings: string[] = [];
 
-  if (lockedPaymentItems.length === 0) {
+  if (items.length === 0) {
     warnings.push("目前沒有可匯出的鎖定核銷項目。");
   }
 
@@ -36,18 +51,18 @@ export function createPaymentBatchPreview(): PaymentBatch {
   return {
     id: "payment_batch_preview",
     batchNo: "PB-115-0426-001",
-    status: lockedPaymentItems.length > 0 ? "ready_for_export" : "draft",
-    itemCount: lockedPaymentItems.length,
+    status: items.length > 0 ? "ready_for_export" : "draft",
+    itemCount: items.length,
     totalAmount,
-    items: lockedPaymentItems,
+    items,
     warnings,
     createdAt: new Date().toISOString(),
   };
 }
 
-export function createPaymentBatch(): PaymentBatch {
+export function createPaymentBatch(items: PaymentBatchItem[] = lockedPaymentItems): PaymentBatch {
   return {
-    ...createPaymentBatchPreview(),
+    ...createPaymentBatchPreview(items),
     id: "payment_batch_001",
     createdAt: new Date().toISOString(),
   };

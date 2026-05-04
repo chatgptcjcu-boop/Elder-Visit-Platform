@@ -197,3 +197,32 @@ insert into public.workspace_memberships (
   '["dashboard.read", "visits.submit"]'::jsonb,
   'active'
 ) on conflict (workspace_id, account_id) do nothing;
+
+insert into public.payment_fee_rules (
+  workspace_id,
+  rule_code,
+  visit_fee,
+  data_processing_fee,
+  currency,
+  effective_from,
+  status,
+  review_note,
+  created_by
+) values (
+  'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+  'elder_visit_default_115',
+  180,
+  30,
+  'TWD',
+  '2026-04-25',
+  'active',
+  '訪視費 180 元、資料處理費 30 元。',
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+) on conflict (workspace_id, rule_code, effective_from) do update
+set
+  visit_fee = excluded.visit_fee,
+  data_processing_fee = excluded.data_processing_fee,
+  currency = excluded.currency,
+  status = excluded.status,
+  review_note = excluded.review_note,
+  updated_at = now();

@@ -1,21 +1,16 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { requireCapability } from "@/lib/api/authorization";
-import {
-  confirmAssignment,
-  getAssignmentRecommendations,
-  visitors,
-} from "@/lib/domain/assignments";
+import { getRepository } from "@/lib/repositories";
 
-export function GET(request: NextRequest) {
+export async function GET(request: NextRequest) {
   const forbidden = requireCapability(request, "assignment.manage");
   if (forbidden) return forbidden;
 
+  const repository = getRepository();
+
   return NextResponse.json({
-    data: {
-      visitors,
-      recommendations: getAssignmentRecommendations(),
-    },
+    data: await repository.getAssignmentDashboard(),
   });
 }
 
@@ -25,7 +20,9 @@ export async function POST(request: NextRequest) {
 
   const body = (await request.json()) as { recommendationId?: string };
 
+  const repository = getRepository();
+
   return NextResponse.json({
-    data: confirmAssignment(body.recommendationId ?? ""),
+    data: await repository.confirmAssignment(body.recommendationId ?? ""),
   });
 }
