@@ -25,6 +25,7 @@ export function getVisitStatusLabel(status: VisitSchedule["status"]) {
 
 export function validateVisitSubmission(submission: VisitSubmission) {
   const missing: string[] = [];
+  const hasGps = typeof submission.gpsLat === "number" && typeof submission.gpsLng === "number";
 
   if (!submission.visitResult) {
     missing.push("訪查結果");
@@ -34,6 +35,14 @@ export function validateVisitSubmission(submission: VisitSubmission) {
   }
   if (!submission.livingStatus) {
     missing.push("生活支持狀態");
+  }
+  if (submission.visitResult === "未遇") {
+    if (submission.photoNames.length === 0) {
+      missing.push("未遇佐證照片");
+    }
+    if (!hasGps) {
+      missing.push("未遇定位");
+    }
   }
 
   return {

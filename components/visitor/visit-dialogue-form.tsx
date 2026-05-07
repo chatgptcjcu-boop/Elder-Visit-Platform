@@ -74,6 +74,19 @@ export function VisitDialogueForm({
     () => calculateCareFormCompletion(careFormAnswers),
     [careFormAnswers],
   );
+  const isMissedVisit = submission.visitResult === "未遇";
+  const activePhotoCategories = isMissedVisit ? missedVisitPhotoCategories : optionalPhotoCategories;
+  const hasVisitGps = typeof submission.gpsLat === "number" && typeof submission.gpsLng === "number";
+  const needsMissedVisitEvidence =
+    isMissedVisit && (submission.photoNames.length === 0 || !hasVisitGps);
+  const locationLabel =
+    typeof submission.gpsLat === "number" && typeof submission.gpsLng === "number"
+      ? `${submission.gpsLat.toFixed(5)}, ${submission.gpsLng.toFixed(5)}`
+      : geoStatus === "locating"
+        ? "取得中..."
+        : geoStatus === "unavailable"
+          ? "尚未取得，請確認瀏覽器定位權限"
+          : "拍照或上傳後自動取得";
 
   useEffect(() => {
     const stored = window.localStorage.getItem(draftKey);
@@ -386,13 +399,22 @@ export function VisitDialogueForm({
         <div className="rounded-lg border bg-background p-3">
           <div className="flex items-center gap-2">
             <MapPin className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-semibold">拍照上傳與自動定位</h2>
+            <h2 className="text-sm font-semibold">
+              {isMissedVisit ? "未遇佐證拍照與自動定位" : "拍照上傳（未遇案件必要）"}
+            </h2>
           </div>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            請依情境拍照或上傳照片。選擇照片時系統會自動取得目前定位，不需要另外按定位按鈕。
+            {isMissedVisit
+              ? "訪視未遇時請至少留下門口、門牌、現場環境或通知留置紀錄照片；選擇照片時系統會自動取得定位。"
+              : "一般訪視照片為選填，主要用於未遇、拒訪、地址疑義或主管要求補證時留下紀錄。"}
           </p>
+          {needsMissedVisitEvidence && (
+            <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+              未遇案件送出前需至少 1 張佐證照片，並完成自動定位。
+            </p>
+          )}
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            {photoCategories.map((category) => (
+            {activePhotoCategories.map((category) => (
               <label
                 key={category}
                 className="inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-md border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-secondary"
@@ -413,13 +435,7 @@ export function VisitDialogueForm({
           <div className="mt-3 space-y-2 text-sm text-muted-foreground">
             <p>
               定位：
-              {submission.gpsLat && submission.gpsLng
-                ? `${submission.gpsLat.toFixed(5)}, ${submission.gpsLng.toFixed(5)}`
-                : geoStatus === "locating"
-                  ? "取得中..."
-                  : geoStatus === "unavailable"
-                    ? "尚未取得，請確認瀏覽器定位權限"
-                    : "拍照或上傳後自動取得"}
+              {locationLabel}
             </p>
             <p>照片：{submission.photoNames.length > 0 ? submission.photoNames.join("、") : "尚未加入"}</p>
           </div>
@@ -475,7 +491,8 @@ export function VisitDialogueForm({
   );
 }
 
-const photoCategories = ["門口", "本人", "環境", "其他"];
+const missedVisitPhotoCategories = ["門口/門牌", "現場環境", "通知或留置紀錄", "其他佐證"];
+const optionalPhotoCategories = ["補充照片", "本人同意照片", "環境補充", "其他"];
 
 function CareFormInput({
   field,
