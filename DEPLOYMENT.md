@@ -34,6 +34,16 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=你的 Supabase publishable / anon key
    - Site URL：填 Netlify 網址
    - Redirect URLs：加入 Netlify 網址與 `/login`
 
+## Netlify 每日 Supabase 保活
+
+本專案已加入 `netlify/functions/supabase-keepalive.ts`。Netlify 發佈後會每天 UTC 20:00，也就是台灣時間 04:00，自動用 anon key 查詢 Supabase 的 `platform_blueprints`，降低 Free 專案因長時間無活動被暫停的風險。
+
+注意：
+
+- 此機制只使用 `NEXT_PUBLIC_SUPABASE_URL` 與 `NEXT_PUBLIC_SUPABASE_ANON_KEY`。
+- 不需要也不應放入 `service_role key`。
+- 若系統正式營運，仍建議升級 Supabase Pro，因為 keep-alive 不是官方 SLA 保證。
+
 ## Vercel 必填環境變數
 
 到 Vercel Project Settings -> Environment Variables 新增：
