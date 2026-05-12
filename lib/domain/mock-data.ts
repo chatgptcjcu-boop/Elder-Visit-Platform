@@ -13,7 +13,7 @@ import type {
 
 export const currentAccount: Account = {
   id: "acc_demo_manager",
-  email: "manager@example.org",
+  email: "manager@eldervisit.org",
   fullName: "示範承辦人",
   status: "active",
 };

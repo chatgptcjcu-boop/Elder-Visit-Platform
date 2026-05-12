@@ -11,12 +11,12 @@
 
 | 角色 | Email | Password | 登入後首頁 |
 | --- | --- | --- | --- |
-| 工作空間擁有者 | owner@example.org | owner123 | /dashboard |
-| 承辦管理者 | manager@example.org | manager123 | /dashboard |
-| 督導 | supervisor@example.org | supervisor123 | /manager/audit |
-| 訪員 | visitor@example.org | visitor123 | /visitor/tasks |
-| 稽核人員 | auditor@example.org | auditor123 | /manager/audit |
-| 唯讀檢視者 | viewer@example.org | viewer123 | /dashboard |
+| 工作空間擁有者 | owner@eldervisit.org | owner123 | /dashboard |
+| 承辦管理者 | manager@eldervisit.org | manager123 | /dashboard |
+| 督導 | supervisor@eldervisit.org | supervisor123 | /manager/audit |
+| 訪員 | visitor@eldervisit.org | visitor123 | /visitor/tasks |
+| 稽核人員 | auditor@eldervisit.org | auditor123 | /manager/audit |
+| 唯讀檢視者 | viewer@eldervisit.org | viewer123 | /dashboard |
 
 ## 角色規劃
 

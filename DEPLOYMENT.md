@@ -80,7 +80,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=你的 Supabase publishable / anon key
 ## 上線後測試
 
 1. 開啟 Vercel 網址。
-2. 登入 `manager@example.org / manager123` 確認示範 fallback 可用。
+2. 登入 `manager@eldervisit.org / manager123` 確認示範 fallback 可用。
 3. 建立正式 Supabase Auth 使用者後，再用正式帳號測試登入。
 4. 檢查以下頁面：
    - `/dashboard`

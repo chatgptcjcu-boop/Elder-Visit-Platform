@@ -28,7 +28,7 @@ function getSafeNextPath(fallback: string) {
 }
 
 export function LoginPanel() {
-  const [email, setEmail] = useState("manager@example.org");
+  const [email, setEmail] = useState("manager@eldervisit.org");
   const [password, setPassword] = useState("manager123");
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState<string | null>(null);

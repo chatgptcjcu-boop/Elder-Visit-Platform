@@ -8,7 +8,7 @@ import type {
 export const registrationRequests: UserRegistrationRequest[] = [
   {
     id: "reg_001",
-    email: "new.visitor@example.org",
+    email: "new.visitor@eldervisit.org",
     fullName: "新進訪員",
     requestedUnitName: "示範公所",
     requestedWorkspaceId: "ws_elder_visit_115",
@@ -20,7 +20,7 @@ export const registrationRequests: UserRegistrationRequest[] = [
   },
   {
     id: "reg_002",
-    email: "case.viewer@example.org",
+    email: "case.viewer@eldervisit.org",
     fullName: "成果檢視者",
     requestedUnitName: "示範公所",
     requestedWorkspaceId: "ws_elder_visit_115",

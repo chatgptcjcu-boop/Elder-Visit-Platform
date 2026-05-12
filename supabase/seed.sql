@@ -105,13 +105,13 @@ insert into public.accounts (
 ) values
 (
   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-  'manager@example.org',
+  'manager@eldervisit.org',
   '示範承辦人',
   'active'
 ),
 (
   'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-  'visitor@example.org',
+  'visitor@eldervisit.org',
   '示範訪員',
   'active'
 ) on conflict (id) do nothing;

@@ -34,7 +34,7 @@ export type OnboardingDraft = {
 export const defaultOnboardingDraft: OnboardingDraft = {
   account: {
     fullName: "示範承辦人",
-    email: "manager@example.org",
+    email: "manager@eldervisit.org",
     persona: "unit_admin",
   },
   unit: {
