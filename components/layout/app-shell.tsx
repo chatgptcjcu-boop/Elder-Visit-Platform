@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { Bell, ChevronRight, LogOut, Search } from "lucide-react";
 import { PermissionProvider } from "@/components/auth/permission-provider";
 import { AnnouncementMarquee } from "@/components/communication/announcement-marquee";
+import { BrandLogo } from "@/components/layout/brand-logo";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { SponsorLogoMark } from "@/components/sponsor/sponsor-logo";
 import { getCurrentWorkspace } from "@/lib/domain/mock-data";
@@ -39,9 +40,7 @@ export async function AppShell({
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 border-r bg-card lg:flex lg:flex-col">
         <div className="border-b px-4 py-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
-              EV
-            </div>
+            <BrandLogo />
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">公益治理後台</p>
               <p className="truncate text-xs text-muted-foreground">{workspace.name}</p>
@@ -129,9 +128,7 @@ export async function AppShell({
         <header className="sticky top-0 z-20 border-b bg-card/95 backdrop-blur">
           <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-3 lg:hidden">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-                EV
-              </div>
+              <BrandLogo size="sm" />
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">公益治理後台</p>
                 <p className="truncate text-xs text-muted-foreground">{workspace.name}</p>

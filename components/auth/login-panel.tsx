@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   UsersRound,
 } from "lucide-react";
+import { BrandLogo } from "@/components/layout/brand-logo";
 import { Button } from "@/components/ui/button";
 import { demoLoginAccounts, getRoleByKey } from "@/lib/domain/permissions";
 
@@ -70,9 +71,7 @@ export function LoginPanel() {
       <div className="mx-auto grid min-h-[calc(100vh-3rem)] w-full max-w-6xl items-center gap-5 lg:grid-cols-[0.95fr_1.05fr]">
         <section className="order-2 rounded-lg border bg-card p-5 shadow-sm lg:order-1 lg:p-6">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground">
-              EV
-            </div>
+            <BrandLogo size="lg" />
             <div>
               <p className="text-sm font-semibold">獨居長者訪查管理平台</p>
               <p className="text-xs text-muted-foreground">公益治理 SaaS 後台</p>
