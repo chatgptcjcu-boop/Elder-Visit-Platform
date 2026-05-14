@@ -10,7 +10,7 @@ const sizeClasses = {
   full: {
     sm: "h-10 w-32",
     md: "h-12 w-44",
-    lg: "h-24 w-80",
+    lg: "h-28 w-[28rem]",
   },
 };
 
@@ -28,7 +28,8 @@ export function BrandLogo({
   return (
     <div
       className={cn(
-        "relative shrink-0 overflow-hidden rounded-lg border bg-white shadow-sm",
+        "relative shrink-0 overflow-hidden",
+        isFullLogo ? "bg-transparent" : "rounded-lg border bg-white shadow-sm",
         sizeClasses[variant][size],
         className,
       )}
@@ -40,7 +41,7 @@ export function BrandLogo({
         sizes={
           isFullLogo
             ? size === "lg"
-              ? "256px"
+              ? "448px"
               : size === "md"
                 ? "176px"
                 : "128px"
