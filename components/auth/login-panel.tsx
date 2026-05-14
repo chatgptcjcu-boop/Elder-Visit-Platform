@@ -70,9 +70,9 @@ export function LoginPanel() {
     <main className="min-h-screen bg-background px-4 py-6 text-foreground sm:px-6 lg:px-8">
       <div className="mx-auto grid min-h-[calc(100vh-3rem)] w-full max-w-6xl items-center gap-5 lg:grid-cols-[0.95fr_1.05fr]">
         <section className="order-2 rounded-lg border bg-card p-5 shadow-sm lg:order-1 lg:p-6">
-          <div className="flex items-center gap-3">
-            <BrandLogo size="lg" />
-            <div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+            <BrandLogo variant="full" size="lg" className="h-24 w-80 max-w-full" />
+            <div className="min-w-0">
               <p className="text-sm font-semibold">獨居長者訪查管理平台</p>
               <p className="text-xs text-muted-foreground">公益治理 SaaS 後台</p>
             </div>

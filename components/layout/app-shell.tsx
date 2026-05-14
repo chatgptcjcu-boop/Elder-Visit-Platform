@@ -40,7 +40,7 @@ export async function AppShell({
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 border-r bg-card lg:flex lg:flex-col">
         <div className="border-b px-4 py-4">
           <div className="flex items-center gap-3">
-            <BrandLogo />
+            <BrandLogo size="md" />
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">公益治理後台</p>
               <p className="truncate text-xs text-muted-foreground">{workspace.name}</p>
