@@ -1,0 +1,236 @@
+{
+  "meta": {
+    "project": "Elder Visit Platform",
+    "document_type": "brand_ui_design_series",
+    "version": "1.0.0",
+    "created_at": "2026-05-16",
+    "language": "zh-TW",
+    "recommended_series": "care_mint"
+  },
+  "brand_strategy": {
+    "core_keywords": [
+      "安心",
+      "照護",
+      "連結",
+      "治理",
+      "可信任"
+    ],
+    "positioning": "面向長照、訪視與公益治理情境的現代化 SaaS 後台",
+    "visual_principles": [
+      "資訊清楚優先於裝飾",
+      "畫面安定、留白有節奏",
+      "品牌溫度與行政效率並存",
+      "行動版操作要比桌面版更直接"
+    ]
+  },
+  "asset_references": {
+    "app_icon": {
+      "file": "docs/design-system/assets/app-icon-care-mint.png",
+      "concept_name": "Care Mint",
+      "description": "以屋頂、雙人照護輪廓、醫療十字與清單圖形整合出長照 App 的多功能象徵。",
+      "design_meaning": {
+        "home": "安全與在地照護",
+        "two_people": "陪伴、家屬、訪員與被照顧者之間的連結",
+        "medical_cross": "健康與照護專業",
+        "checklist": "訪視、紀錄、任務管理與稽核流程"
+      }
+    }
+  },
+  "series": {
+    "care_mint": {
+      "role": "recommended",
+      "mood": "柔和、專業、親近",
+      "palette": {
+        "primary": "#7FBF9A",
+        "primary_deep": "#4FA878",
+        "primary_soft": "#DCEFE3",
+        "background": "#F6FAF7",
+        "surface": "#FFFFFF",
+        "text_strong": "#172018",
+        "text_muted": "#66736A",
+        "border": "#D9E5DC",
+        "success": "#4FA878",
+        "warning": "#E7B85B",
+        "danger": "#D86C63"
+      },
+      "best_for": [
+        "App icon",
+        "登入頁",
+        "訪員端",
+        "日常營運後台"
+      ]
+    },
+    "calm_clinic": {
+      "role": "alternative",
+      "mood": "理性、醫療、乾淨",
+      "palette": {
+        "primary": "#5F8F86",
+        "primary_deep": "#35685F",
+        "primary_soft": "#E1ECE9",
+        "background": "#F7FAFA",
+        "surface": "#FFFFFF",
+        "text_strong": "#172120",
+        "text_muted": "#687574",
+        "border": "#D9E3E1",
+        "success": "#5F8F86",
+        "warning": "#D5AA58",
+        "danger": "#C96D67"
+      },
+      "best_for": [
+        "督導",
+        "稽核",
+        "表單與審核流程",
+        "政府專案"
+      ]
+    },
+    "warm_community": {
+      "role": "alternative",
+      "mood": "公益、社區、溫暖",
+      "palette": {
+        "primary": "#78B596",
+        "primary_deep": "#4B8F73",
+        "primary_soft": "#E4F1EA",
+        "accent": "#E8B965",
+        "background": "#FBFCFA",
+        "surface": "#FFFFFF",
+        "text_strong": "#1B211C",
+        "text_muted": "#6A756D",
+        "border": "#DEE7E1",
+        "success": "#4B8F73",
+        "warning": "#E8B965",
+        "danger": "#D67A68"
+      },
+      "best_for": [
+        "公益品牌",
+        "贊助露出",
+        "成果報告",
+        "對外展示頁"
+      ]
+    }
+  },
+  "ui_system": {
+    "layout": {
+      "desktop": {
+        "sidebar_width": "288px",
+        "content_max_width": "1792px",
+        "grid_gap": "16px",
+        "page_padding": "24px"
+      },
+      "mobile": {
+        "page_padding": "12px",
+        "bottom_navigation": true,
+        "collapsed_navigation": true,
+        "minimum_touch_target": "44px"
+      }
+    },
+    "shape": {
+      "radius_sm": "4px",
+      "radius_md": "6px",
+      "radius_lg": "8px",
+      "card_radius_max": "8px"
+    },
+    "typography": {
+      "font_family": [
+        "Noto Sans TC",
+        "Inter",
+        "system-ui",
+        "sans-serif"
+      ],
+      "scale": {
+        "display": "32px",
+        "page_title": "24px",
+        "section_title": "18px",
+        "body": "14px",
+        "caption": "12px"
+      },
+      "rules": [
+        "標題清楚但不誇張",
+        "卡片內標題不可大於區段標題",
+        "中文介面維持 0 letter-spacing",
+        "長字串需自動換行，不可壓縮到不可讀"
+      ]
+    },
+    "components": {
+      "buttons": {
+        "primary": "實心主色，僅保留主要操作",
+        "secondary": "淺底，用於次要操作",
+        "outline": "列表工具與低風險操作",
+        "icon_button": "工具列優先使用圖示按鈕並附 tooltip"
+      },
+      "cards": {
+        "style": "低陰影、細邊框、密度中高",
+        "usage": [
+          "個別資料項目",
+          "摘要卡",
+          "小型工作區塊"
+        ],
+        "avoid": [
+          "卡片內再放卡片",
+          "整頁每一區都做成浮動大卡"
+        ]
+      },
+      "tables": {
+        "header_style": "淡底色、固定欄位名",
+        "row_density": "中密度",
+        "recommended_features": [
+          "搜尋",
+          "篩選",
+          "排序",
+          "批次操作",
+          "空狀態"
+        ]
+      },
+      "forms": {
+        "field_height": "44px",
+        "label_position": "top",
+        "validation": "即時顯示但不干擾填寫",
+        "required_marker": "明確但克制"
+      }
+    },
+    "interaction": {
+      "navigation": [
+        "桌面左側使用樹狀收合",
+        "手機版使用底部導覽與分組抽屜",
+        "目前頁面要有明顯 active state"
+      ],
+      "feedback": [
+        "載入使用 skeleton",
+        "成功與錯誤要有即時回饋",
+        "重大操作需二次確認"
+      ]
+    }
+  },
+  "app_icon_guidelines": {
+    "preferred_shape": "rounded_square",
+    "safe_area": "四邊至少保留 12% 留白",
+    "small_size_rule": "16px 仍須能辨識屋頂與雙人輪廓",
+    "do": [
+      "保持大輪廓與高辨識度",
+      "功能符號不超過 4 個",
+      "白底搭配柔和綠色",
+      "優先使用幾何與留白建立記憶點"
+    ],
+    "dont": [
+      "加入過多文字",
+      "塞入真實人物肖像",
+      "使用過細線條",
+      "在小尺寸中保留過多細節"
+    ]
+  },
+  "implementation_mapping": {
+    "current_project_tokens": {
+      "background": "app/globals.css --background",
+      "foreground": "app/globals.css --foreground",
+      "primary": "app/globals.css --primary",
+      "secondary": "app/globals.css --secondary",
+      "accent": "app/globals.css --accent",
+      "radius": "app/globals.css --radius"
+    },
+    "recommended_next_step": [
+      "若採用 care_mint，將目前藍色 primary 改為綠色系 token",
+      "登入頁、按鈕、active state、統計卡片統一改為 care_mint palette",
+      "保留警示色與稽核狀態色，不要全部變綠",
+      "建立 icon 1024、512、192、180、64 尺寸輸出組"
+    ]
+  }
+}

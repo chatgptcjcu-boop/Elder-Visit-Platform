@@ -938,7 +938,7 @@ function createEmptySponsor(): SponsorPartner {
     industry: "企業公益 / ESG",
     logoText: "",
     logoUrl: "",
-    themeColor: "#0f766e",
+    themeColor: "#4FA878",
     contributionLabel: "",
     visibilityLevel: "standard",
     activeFrom: new Date().toISOString().slice(0, 10),

@@ -3,23 +3,23 @@
 @tailwind utilities;
 
 :root {
-  --background: 210 22% 96%;
-  --foreground: 220 28% 10%;
+  --background: 135 29% 97%;
+  --foreground: 127 16% 11%;
   --card: 0 0% 100%;
-  --card-foreground: 220 28% 10%;
-  --primary: 214 89% 52%;
+  --card-foreground: 127 16% 11%;
+  --primary: 148 36% 48%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 216 24% 93%;
-  --secondary-foreground: 220 24% 16%;
-  --muted: 216 21% 91%;
-  --muted-foreground: 220 11% 42%;
-  --accent: 187 86% 42%;
-  --accent-foreground: 0 0% 100%;
-  --destructive: 0 72% 47%;
+  --secondary: 142 37% 90%;
+  --secondary-foreground: 127 16% 18%;
+  --muted: 138 24% 92%;
+  --muted-foreground: 138 6% 43%;
+  --accent: 40 74% 63%;
+  --accent-foreground: 36 42% 18%;
+  --destructive: 5 60% 62%;
   --destructive-foreground: 0 0% 100%;
-  --border: 214 18% 84%;
-  --input: 214 18% 84%;
-  --ring: 214 89% 52%;
+  --border: 135 19% 87%;
+  --input: 135 19% 87%;
+  --ring: 148 36% 48%;
   --radius: 0.5rem;
 }
 
@@ -30,7 +30,7 @@
 body {
   min-height: 100vh;
   background:
-    linear-gradient(180deg, hsl(213 35% 97%) 0%, hsl(var(--background)) 18rem),
+    linear-gradient(180deg, hsl(140 35% 98%) 0%, hsl(var(--background)) 18rem),
     hsl(var(--background));
   color: hsl(var(--foreground));
 }
