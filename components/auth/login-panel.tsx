@@ -69,82 +69,86 @@ export function LoginPanel() {
   return (
     <main className="min-h-screen bg-background px-4 py-6 text-foreground sm:px-6 lg:px-8">
       <div className="mx-auto grid min-h-[calc(100vh-3rem)] w-full max-w-6xl items-center gap-5 lg:grid-cols-[0.95fr_1.05fr]">
-        <section className="order-2 rounded-lg border bg-card p-5 shadow-sm lg:order-1 lg:p-6">
-          <div className="flex flex-col">
-            <BrandLogo variant="full" size="lg" className="h-28 w-full max-w-md" />
-            <div className="mt-2 min-w-0">
-              <p className="text-base font-semibold">獨居長者訪查管理平台</p>
-              <p className="text-sm text-muted-foreground">公益治理 SaaS 後台</p>
+        <section className="order-2 overflow-hidden rounded-lg border bg-card shadow-sm lg:order-1">
+          <div className="border-b bg-primary/5 p-5 lg:p-6">
+            <div className="flex flex-col">
+              <BrandLogo variant="full" size="lg" className="h-28 w-full max-w-md" />
+              <div className="mt-2 min-w-0">
+                <p className="text-base font-semibold">獨居長者訪查管理平台</p>
+                <p className="text-sm text-muted-foreground">公益治理 SaaS 後台</p>
+              </div>
             </div>
           </div>
 
-          <div className="mt-8">
-            <p className="text-sm font-medium text-primary">使用者登入</p>
-            <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">登入工作空間</h1>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">
-              依登入帳號自動切換角色、權限、首頁與可操作功能；正式版會接 Supabase Auth 與使用者審核。
-            </p>
-          </div>
-
-          <div className="mt-6 grid gap-4">
-            <label className="block text-sm font-medium">
-              帳號 Email
-              <input
-                className="mt-2 h-11 w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
-                autoComplete="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-              />
-            </label>
-
-            <label className="block text-sm font-medium">
-              密碼
-              <div className="mt-2 flex h-11 items-center rounded-md border bg-background focus-within:ring-2 focus-within:ring-ring">
-                <input
-                  className="min-w-0 flex-1 bg-transparent px-3 text-sm outline-none"
-                  autoComplete="current-password"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                />
-                <button
-                  type="button"
-                  className="flex h-11 w-11 items-center justify-center text-muted-foreground hover:text-foreground"
-                  aria-label={showPassword ? "隱藏密碼" : "顯示密碼"}
-                  onClick={() => setShowPassword((current) => !current)}
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </label>
-
-            {selectedRole && (
-              <div className="rounded-lg border bg-background p-3">
-                <p className="text-xs text-muted-foreground">目前選擇角色</p>
-                <div className="mt-2 flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold">{selectedRole.label}</p>
-                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                      {selectedRole.description}
-                    </p>
-                  </div>
-                  <span className="shrink-0 rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
-                    {selectedAccount?.fullName}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            <Button className="h-11 w-full" onClick={login}>
-              <LogIn className="h-4 w-4" />
-              登入系統
-            </Button>
-
-            {message && (
-              <p className="rounded-md bg-secondary p-3 text-sm text-muted-foreground">
-                {message}
+          <div className="p-5 lg:p-6">
+            <div>
+              <p className="text-sm font-medium text-primary">使用者登入</p>
+              <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">登入工作空間</h1>
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                依登入帳號自動切換角色、權限、首頁與可操作功能；正式版會接 Supabase Auth 與使用者審核。
               </p>
-            )}
+            </div>
+
+            <div className="mt-6 grid gap-4">
+              <label className="block text-sm font-medium">
+                帳號 Email
+                <input
+                  className="mt-2 h-11 w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                />
+              </label>
+
+              <label className="block text-sm font-medium">
+                密碼
+                <div className="mt-2 flex h-11 items-center rounded-md border bg-background focus-within:ring-2 focus-within:ring-ring">
+                  <input
+                    className="min-w-0 flex-1 bg-transparent px-3 text-sm outline-none"
+                    autoComplete="current-password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="flex h-11 w-11 items-center justify-center text-muted-foreground hover:text-foreground"
+                    aria-label={showPassword ? "隱藏密碼" : "顯示密碼"}
+                    onClick={() => setShowPassword((current) => !current)}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </label>
+
+              {selectedRole && (
+                <div className="rounded-lg border bg-background p-3">
+                  <p className="text-xs text-muted-foreground">目前選擇角色</p>
+                  <div className="mt-2 flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold">{selectedRole.label}</p>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                        {selectedRole.description}
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-md bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
+                      {selectedAccount?.fullName}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <Button className="h-11 w-full" onClick={login}>
+                <LogIn className="h-4 w-4" />
+                登入系統
+              </Button>
+
+              {message && (
+                <p className="rounded-md bg-secondary p-3 text-sm text-muted-foreground">
+                  {message}
+                </p>
+              )}
+            </div>
           </div>
         </section>
 
@@ -226,7 +230,9 @@ function FeatureCard({
 }) {
   return (
     <div className="rounded-lg border bg-background p-3">
-      <Icon className="h-4 w-4 text-primary" />
+      <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
+        <Icon className="h-4 w-4" />
+      </span>
       <p className="mt-3 text-sm font-semibold">{title}</p>
       <p className="mt-1 text-sm leading-6 text-muted-foreground">{detail}</p>
     </div>

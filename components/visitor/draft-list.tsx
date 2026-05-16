@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { FilePenLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import type { VisitDraft } from "@/lib/domain/offline-drafts";
 import { visitSchedules } from "@/lib/domain/mock-data";
 import { getVisitDraftKey } from "@/lib/domain/offline-drafts";
@@ -48,9 +49,11 @@ export function DraftList() {
       </section>
 
       {drafts.length === 0 ? (
-        <section className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
-          目前沒有尚未送出的訪查草稿。
-        </section>
+        <EmptyState
+          icon={FilePenLine}
+          title="目前沒有離線草稿"
+          description="訪查填寫後若尚未送出，草稿會保存在這裡，方便稍後接續處理。"
+        />
       ) : (
         <section className="grid gap-3 md:grid-cols-2">
           {drafts.map((item) => (

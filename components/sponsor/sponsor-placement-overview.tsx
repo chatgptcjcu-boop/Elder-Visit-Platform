@@ -46,7 +46,7 @@ export function SponsorPlacementOverview() {
           />
         </div>
 
-        <div className="mt-4 rounded-md bg-secondary p-3 text-sm text-muted-foreground">
+        <div className="mt-4 rounded-md border border-primary/15 bg-primary/5 p-3 text-sm text-muted-foreground">
           建議企業聯名先放在總覽、成果報告、登入頁或完成頁，不放在個資表單與同意書填寫區。
         </div>
       </div>
@@ -59,19 +59,19 @@ export function SponsorPlacementOverview() {
               以不干擾工作、可治理、可稽核為原則。
             </p>
           </div>
-          <span className="rounded-md bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+          <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
             {sponsorPartners.length} 家
           </span>
         </div>
 
         <div className="mt-4 grid gap-3">
           {placements.map((placement) => (
-            <article key={placement.key} className="rounded-lg border bg-background p-3">
+            <article key={placement.key} className="rounded-lg border bg-background p-3 transition-colors hover:border-primary/30 hover:bg-primary/[0.03]">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-semibold">{placement.label}</p>
-                    <span className="rounded-md bg-secondary px-2 py-0.5 text-xs">
+                    <span className="rounded-md bg-primary/10 px-2 py-0.5 text-xs text-primary">
                       {statusLabel[placement.status]}
                     </span>
                   </div>

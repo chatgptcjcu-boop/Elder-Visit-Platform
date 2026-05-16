@@ -24,6 +24,10 @@
     ]
   },
   "asset_references": {
+    "horizontal_logo": {
+      "file": "public/brand/elder-visit-logo.png",
+      "concept_name": "Care Mint Wordmark"
+    },
     "app_icon": {
       "file": "docs/design-system/assets/app-icon-care-mint.png",
       "concept_name": "Care Mint",
@@ -34,6 +38,13 @@
         "medical_cross": "健康與照護專業",
         "checklist": "訪視、紀錄、任務管理與稽核流程"
       }
+    },
+    "published_icon_outputs": {
+      "app_icon_512": "public/icons/app-icon-512.png",
+      "app_icon_192": "public/icons/app-icon-192.png",
+      "apple_touch_icon": "public/icons/apple-touch-icon.png",
+      "favicon_32": "public/icons/favicon-32.png",
+      "favicon_16": "public/icons/favicon-16.png"
     }
   },
   "series": {

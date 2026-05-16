@@ -1,4 +1,6 @@
+import { ClipboardCheck } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
+import { EmptyState } from "@/components/ui/empty-state";
 import { TaskCard } from "@/components/visitor/task-card";
 import { getRepository } from "@/lib/repositories";
 
@@ -14,11 +16,19 @@ export default async function VisitorTasksPage() {
         </p>
       </section>
 
-      <section className="grid gap-3 lg:grid-cols-3">
-        {tasks.map(({ schedule, elderCase }) => {
-          return <TaskCard key={schedule.id} elderCase={elderCase} schedule={schedule} />;
-        })}
-      </section>
+      {tasks.length === 0 ? (
+        <EmptyState
+          icon={ClipboardCheck}
+          title="目前沒有待辦訪視"
+          description="新的派案建立後，會依資格與排序規則顯示在這裡。"
+        />
+      ) : (
+        <section className="grid gap-3 lg:grid-cols-3">
+          {tasks.map(({ schedule, elderCase }) => {
+            return <TaskCard key={schedule.id} elderCase={elderCase} schedule={schedule} />;
+          })}
+        </section>
+      )}
     </AppShell>
   );
 }
