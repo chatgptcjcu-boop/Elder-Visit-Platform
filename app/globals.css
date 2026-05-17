@@ -39,6 +39,16 @@ body {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+.safe-page-bottom {
+  padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+}
+
+input,
+textarea,
+select {
+  scroll-margin-bottom: 10rem;
+}
+
 @keyframes marquee {
   from {
     transform: translateX(0);

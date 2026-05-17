@@ -162,7 +162,7 @@ export async function AppShell({
         </header>
 
         <PermissionProvider capabilities={role.capabilities}>
-          <main className="mx-auto flex w-full max-w-[112rem] flex-col gap-4 px-3 py-4 pb-24 sm:px-5 lg:px-6 xl:px-8 lg:pb-8">
+          <main className="safe-page-bottom mx-auto flex w-full max-w-[112rem] flex-col gap-4 px-3 py-4 sm:px-5 lg:px-6 xl:px-8 lg:pb-8">
             <AnnouncementMarquee />
             {children}
           </main>

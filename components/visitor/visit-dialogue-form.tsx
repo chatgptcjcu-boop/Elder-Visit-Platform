@@ -201,7 +201,7 @@ export function VisitDialogueForm({
   }
 
   return (
-    <section className="rounded-lg border bg-card p-4">
+    <section className="rounded-lg border bg-card p-4 pb-28 sm:pb-4">
       <div>
         <p className="text-sm font-medium text-primary">對話式填報流程</p>
         <h1 className="mt-2 text-2xl font-semibold">{elderCase.name}</h1>
@@ -351,7 +351,7 @@ export function VisitDialogueForm({
         </section>
 
         {visitQuestions.map((question) => (
-          <div key={question.key} className="flex gap-3">
+          <div key={question.key} className="flex scroll-mt-24 gap-3">
             <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-secondary text-xs font-semibold">
               問
             </div>
@@ -489,25 +489,38 @@ export function VisitDialogueForm({
         </div>
       </div>
 
-      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-        {!validation.ok && (
-          <p className="text-sm text-destructive">尚缺：{validation.missing.join("、")}</p>
-        )}
-        {careFormCompletion.percent < 100 && (
-          <p className="text-sm text-destructive">
-            新北關懷表尚缺必填：{careFormCompletion.missingLabels.join("、")}
-          </p>
-        )}
-        {result && (
-          <p className="flex items-center gap-2 text-sm font-medium text-primary">
-            <CheckCircle2 className="h-4 w-4" />
-            {result}
-          </p>
-        )}
-        <Button onClick={submitVisit} disabled={!validation.ok || careFormCompletion.percent < 100 || isSubmitting}>
-          {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-          送出訪查紀錄
-        </Button>
+      <div className="mt-5 hidden flex-col gap-3 sm:flex sm:flex-row sm:items-center sm:justify-end">
+        <SubmissionStatus
+          validationOk={validation.ok}
+          validationMissing={validation.missing}
+          careFormPercent={careFormCompletion.percent}
+          careFormMissing={careFormCompletion.missingLabels}
+          result={result}
+        />
+        <SubmitVisitButton
+          disabled={!validation.ok || careFormCompletion.percent < 100 || isSubmitting}
+          isSubmitting={isSubmitting}
+          onClick={submitVisit}
+        />
+      </div>
+
+      <div className="safe-bottom fixed inset-x-0 bottom-16 z-20 border-t bg-card/95 px-3 py-3 shadow-[0_-10px_24px_rgba(15,23,42,0.08)] backdrop-blur sm:hidden">
+        <div className="mx-auto grid max-w-md gap-2">
+          <SubmissionStatus
+            compact
+            validationOk={validation.ok}
+            validationMissing={validation.missing}
+            careFormPercent={careFormCompletion.percent}
+            careFormMissing={careFormCompletion.missingLabels}
+            result={result}
+          />
+          <SubmitVisitButton
+            className="w-full"
+            disabled={!validation.ok || careFormCompletion.percent < 100 || isSubmitting}
+            isSubmitting={isSubmitting}
+            onClick={submitVisit}
+          />
+        </div>
       </div>
     </section>
   );
@@ -594,6 +607,58 @@ function CareFormInput({
         onChange={(event) => onChange(event.target.value)}
       />
     </label>
+  );
+}
+
+function SubmissionStatus({
+  validationOk,
+  validationMissing,
+  careFormPercent,
+  careFormMissing,
+  result,
+  compact = false,
+}: {
+  validationOk: boolean;
+  validationMissing: string[];
+  careFormPercent: number;
+  careFormMissing: string[];
+  result: string | null;
+  compact?: boolean;
+}) {
+  return (
+    <div className={`grid gap-1 ${compact ? "text-xs" : "text-sm"}`}>
+      {!validationOk && (
+        <p className="text-destructive">尚缺：{validationMissing.join("、")}</p>
+      )}
+      {careFormPercent < 100 && (
+        <p className="text-destructive">新北關懷表尚缺必填：{careFormMissing.join("、")}</p>
+      )}
+      {result && (
+        <p className="flex items-center gap-2 font-medium text-primary">
+          <CheckCircle2 className="h-4 w-4" />
+          {result}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function SubmitVisitButton({
+  className,
+  disabled,
+  isSubmitting,
+  onClick,
+}: {
+  className?: string;
+  disabled: boolean;
+  isSubmitting: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Button className={className} onClick={onClick} disabled={disabled}>
+      {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+      送出訪查紀錄
+    </Button>
   );
 }
 

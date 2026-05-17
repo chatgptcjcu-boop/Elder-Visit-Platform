@@ -51,7 +51,7 @@ export function BottomNav({
 
       <section
         className={cn(
-          "safe-bottom fixed inset-x-0 bottom-16 z-30 max-h-[70vh] overflow-hidden border-t bg-card shadow-[0_-12px_32px_rgba(15,23,42,0.14)] transition-transform duration-200 sm:mx-auto sm:max-w-md sm:rounded-t-lg sm:border-x",
+          "safe-bottom fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 max-h-[70dvh] overflow-hidden border-t bg-card shadow-[0_-12px_32px_rgba(15,23,42,0.14)] transition-transform duration-200 sm:mx-auto sm:max-w-md sm:rounded-t-lg sm:border-x",
           isOpen ? "translate-y-0" : "pointer-events-none translate-y-[calc(100%+4rem)]",
         )}
       >
@@ -70,7 +70,7 @@ export function BottomNav({
           </button>
         </div>
 
-        <div className="flex max-h-[calc(70vh-4.5rem)] flex-col overflow-hidden">
+        <div className="flex max-h-[calc(70dvh-4.5rem)] flex-col overflow-hidden">
           <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
             {navGroups.map((group) => {
               if (group.key === "daily") {
