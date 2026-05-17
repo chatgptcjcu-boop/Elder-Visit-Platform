@@ -504,6 +504,24 @@ export function VisitDialogueForm({
         />
       </div>
 
+      {result && (
+        <section className="mt-5 rounded-lg border border-primary/30 bg-primary/5 p-4">
+          <p className="text-sm font-medium text-primary">本次訪查已完成</p>
+          <h2 className="mt-1 text-base font-semibold">紀錄已送出，下一步可返回任務清單</h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            系統已清除本機草稿；若有督導補件或未遇續訪，會再出現在任務清單中。
+          </p>
+          <div className="mt-3 grid gap-2 sm:flex">
+            <Button asChild className="w-full sm:w-auto">
+              <a href="/visitor/tasks">回到任務清單</a>
+            </Button>
+            <Button asChild className="w-full sm:w-auto" variant="outline">
+              <a href="/visitor/drafts">查看草稿</a>
+            </Button>
+          </div>
+        </section>
+      )}
+
       <div className="safe-bottom fixed inset-x-0 bottom-16 z-20 border-t bg-card/95 px-3 py-3 shadow-[0_-10px_24px_rgba(15,23,42,0.08)] backdrop-blur sm:hidden">
         <div className="mx-auto grid max-w-md gap-2">
           <SubmissionStatus

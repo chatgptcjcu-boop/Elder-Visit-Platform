@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { VisitDialogueForm } from "@/components/visitor/visit-dialogue-form";
+import { VisitorWorkflowBar } from "@/components/visitor/visitor-workflow-bar";
 import { getCase, getVisitSchedule } from "@/lib/domain/mock-data";
 
 export default async function VisitDetailPage({
@@ -23,6 +24,7 @@ export default async function VisitDetailPage({
 
   return (
     <AppShell active="tasks">
+      <VisitorWorkflowBar active="visit" />
       <VisitDialogueForm elderCase={elderCase} schedule={schedule} />
     </AppShell>
   );

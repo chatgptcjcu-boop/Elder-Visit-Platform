@@ -5,8 +5,9 @@ import Link from "next/link";
 import { FilePenLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { VisitorWorkflowBar } from "@/components/visitor/visitor-workflow-bar";
 import type { VisitDraft } from "@/lib/domain/offline-drafts";
-import { visitSchedules } from "@/lib/domain/mock-data";
+import { elderCases, visitSchedules } from "@/lib/domain/mock-data";
 import { getVisitDraftKey } from "@/lib/domain/offline-drafts";
 
 type DraftItem = {
@@ -47,6 +48,7 @@ export function DraftList() {
           訪查填報會自動保存在本機，送出成功後會清除。
         </p>
       </section>
+      <VisitorWorkflowBar active="drafts" />
 
       {drafts.length === 0 ? (
         <EmptyState
@@ -58,10 +60,15 @@ export function DraftList() {
         <section className="grid gap-3 md:grid-cols-2">
           {drafts.map((item) => (
             <article key={item.scheduleId} className="rounded-lg border bg-card p-4">
-              <h2 className="font-semibold">{item.scheduleId}</h2>
+              <h2 className="font-semibold">
+                {getDraftCaseName(item.scheduleId) ?? item.scheduleId}
+              </h2>
               <p className="mt-2 text-sm text-muted-foreground">
                 {item.draft.visitResult} · {item.draft.healthStatus} ·{" "}
                 {new Date(item.draft.updatedAt).toLocaleString("zh-TW")}
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                草稿會自動續存，送出成功後才會從本機清除。
               </p>
               <Button asChild className="mt-4 w-full">
                 <Link href={`/visitor/visits/${item.scheduleId}`}>繼續填報</Link>
@@ -72,4 +79,9 @@ export function DraftList() {
       )}
     </div>
   );
+}
+
+function getDraftCaseName(scheduleId: string) {
+  const schedule = visitSchedules.find((item) => item.id === scheduleId);
+  return elderCases.find((elderCase) => elderCase.id === schedule?.caseId)?.name;
 }

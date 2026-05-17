@@ -2,6 +2,7 @@ import { ClipboardCheck } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TaskCard } from "@/components/visitor/task-card";
+import { VisitorWorkflowBar } from "@/components/visitor/visitor-workflow-bar";
 import { getRepository } from "@/lib/repositories";
 
 export default async function VisitorTasksPage() {
@@ -15,6 +16,7 @@ export default async function VisitorTasksPage() {
           今日任務依 Workspace、訪員資格、風險等級與訪視次數排序。
         </p>
       </section>
+      <VisitorWorkflowBar active="tasks" />
 
       {tasks.length === 0 ? (
         <EmptyState
