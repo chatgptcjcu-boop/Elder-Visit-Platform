@@ -64,7 +64,7 @@ export function NotificationDashboard() {
         title="異常通報與通知模板"
         description="異常可觸發督導通知、KPI 與後續稽核；外部通道先保留，不綁定品牌識別。"
         aside={
-          <div className="grid min-w-[14rem] grid-cols-2 gap-2 text-sm">
+          <div className="grid gap-2 text-sm sm:min-w-[14rem] sm:grid-cols-2">
             <SummaryStat label="待處理" value={`${incidentReports.length}`} />
             <SummaryStat label="通知模板" value={`${notificationTemplates.length}`} />
           </div>
@@ -80,7 +80,7 @@ export function NotificationDashboard() {
           <div className="mt-4 space-y-3">
             {incidentReports.map((incident) => (
               <div key={incident.id} className="rounded-md border bg-background p-3">
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="text-sm font-semibold">{incident.elderName}</p>
                     <p className="mt-1 text-xs text-muted-foreground">{incident.caseCode}</p>
@@ -123,7 +123,7 @@ export function NotificationDashboard() {
           <div className="mt-4 space-y-3">
             {notificationTemplates.map((template) => (
               <div key={template.id} className="rounded-md border bg-background p-3">
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="text-sm font-semibold">{template.name}</p>
                     <p className="mt-1 text-xs text-muted-foreground">

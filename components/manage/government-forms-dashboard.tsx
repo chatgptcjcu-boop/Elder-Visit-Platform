@@ -297,9 +297,9 @@ export function GovernmentFormsDashboard() {
         </article>
 
         <article className="rounded-lg border bg-card p-4">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-base font-semibold">表單基本資料</h2>
-            <Button onClick={saveTemplateDraft}>
+            <Button className="w-full sm:w-auto" onClick={saveTemplateDraft}>
               <Save className="h-4 w-4" />
               儲存修改
             </Button>
@@ -334,8 +334,8 @@ export function GovernmentFormsDashboard() {
       </section>
 
       <section className="rounded-lg border bg-card p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <label className="text-sm font-medium sm:w-72">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+          <label className="text-sm font-medium lg:w-72">
             編輯區段
             <select
               className="mt-2 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
@@ -349,7 +349,7 @@ export function GovernmentFormsDashboard() {
               ))}
             </select>
           </label>
-          <label className="text-sm font-medium sm:flex-1">
+          <label className="text-sm font-medium lg:flex-1">
             新增區段
             <input
               className="mt-2 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
@@ -358,7 +358,7 @@ export function GovernmentFormsDashboard() {
               placeholder="例如：受訪者基本資料"
             />
           </label>
-          <Button onClick={addSection}>
+          <Button className="w-full lg:w-auto" onClick={addSection}>
             <Plus className="h-4 w-4" />
             新增區段
           </Button>
@@ -422,7 +422,7 @@ export function GovernmentFormsDashboard() {
                 敏感資料
               </label>
             </div>
-            <Button className="mt-4" onClick={saveField}>
+            <Button className="mt-4 w-full sm:w-auto" onClick={saveField}>
               {editingFieldKey ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
               {editingFieldKey ? "儲存欄位修改" : "新增欄位"}
             </Button>

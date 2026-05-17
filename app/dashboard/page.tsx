@@ -40,7 +40,7 @@ export default async function DashboardPage() {
         title={roleDashboard.title}
         description={roleDashboard.description}
         aside={
-          <div className="grid min-w-[16rem] gap-2 rounded-lg border bg-background p-3 text-sm">
+          <div className="grid gap-2 rounded-lg border bg-background p-3 text-sm sm:min-w-[16rem]">
             <StatusRow label="工作空間" value={workspace.name} />
             <StatusRow label="服務單位" value={unit?.unitName ?? "未指定單位"} />
             <StatusRow label="目前方案" value={workspace.planName} />
@@ -85,7 +85,7 @@ export default async function DashboardPage() {
 
       <section className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">
         <div className="rounded-lg border bg-card p-4">
-          <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-base font-semibold">{roleDashboard.workQueueTitle}</h2>
               <p className="text-sm text-muted-foreground">{roleDashboard.workQueueHint}</p>
@@ -102,7 +102,7 @@ export default async function DashboardPage() {
           <div className="mt-4 grid gap-3">
             {roleDashboard.sidePanelRows.map((row) => (
               <div key={row.label} className="rounded-md border bg-background p-3">
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-sm font-medium">{row.label}</p>
                   <span className="rounded-md bg-secondary px-2 py-1 text-xs">{row.value}</span>
                 </div>

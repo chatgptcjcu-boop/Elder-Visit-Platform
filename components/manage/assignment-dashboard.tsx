@@ -171,7 +171,7 @@ export function AssignmentDashboard() {
 
       {data && selectedRecommendation && (
         <section className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(24rem,1.05fr)]">
-          <div className="rounded-lg border bg-card p-4">
+          <div className="order-1 rounded-lg border bg-card p-4 xl:order-none">
             <h2 className="text-base font-semibold">左側：待派名冊</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               先點選要派案的個案，再到右側選定訪員。
@@ -224,7 +224,7 @@ export function AssignmentDashboard() {
             </div>
           </div>
 
-          <div className="rounded-lg border bg-card p-4">
+          <div className="order-2 rounded-lg border bg-card p-4 xl:order-none">
             <h2 className="text-base font-semibold">右側：訪員分配</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               查看每位訪員工作量、區域與訓練狀態後，進行 1 對 1 分配。

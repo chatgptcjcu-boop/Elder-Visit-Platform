@@ -70,7 +70,7 @@ export function SitemapPanel({ role }: { role: WorkspaceRole }) {
 
           return (
           <details key={section.title} className="group rounded-lg border bg-card" open={sectionIndex === 0}>
-            <summary className="flex cursor-pointer list-none items-start justify-between gap-3 p-4 [&::-webkit-details-marker]:hidden">
+            <summary className="flex cursor-pointer list-none flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between [&::-webkit-details-marker]:hidden">
               <div>
                 <p className="text-xs font-semibold text-primary">
                   流程 {String(sectionIndex + 1).padStart(2, "0")}
@@ -80,13 +80,13 @@ export function SitemapPanel({ role }: { role: WorkspaceRole }) {
                   {section.description}
                 </p>
               </div>
-              <span className="rounded-md bg-secondary px-3 py-2 text-xs font-medium text-muted-foreground">
+              <span className="w-fit rounded-md bg-secondary px-3 py-2 text-xs font-medium text-muted-foreground">
                 點選展開
               </span>
             </summary>
 
             <div className="border-t p-4">
-              <div className="mb-4 flex justify-end">
+              <div className="mb-4 flex justify-start sm:justify-end">
                 <Link
                   href={sectionHref}
                   className="inline-flex items-center gap-2 rounded-md bg-secondary px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
@@ -114,9 +114,9 @@ export function SitemapPanel({ role }: { role: WorkspaceRole }) {
               />
             </div>
 
-            <ol className="mt-4 space-y-2">
+            <ol className="mt-4 grid gap-2">
               {section.steps.map((step, index) => (
-                <li key={step} className="flex gap-3 rounded-md border bg-background p-3 text-sm">
+                <li key={step} className="flex gap-3 rounded-md border bg-background p-3 text-sm leading-6">
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
                     {index + 1}
                   </span>
