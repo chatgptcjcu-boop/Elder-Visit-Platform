@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
+import { RoleHomePriorities } from "@/components/dashboard/role-home-priorities";
 import { StatCard } from "@/components/stat-card";
 import { TaskThread } from "@/components/task-thread";
 import { PageIntro } from "@/components/ui/page-intro";
@@ -48,6 +49,7 @@ export default async function DashboardPage() {
           </div>
         }
       />
+      <RoleHomePriorities roleKey={roleKey} />
 
       {(roleKey === "workspace_manager" || roleKey === "supervisor") && (
         <>
