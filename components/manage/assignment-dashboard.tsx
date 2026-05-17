@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useCan } from "@/components/auth/permission-provider";
 import { Button } from "@/components/ui/button";
+import { PageIntro } from "@/components/ui/page-intro";
 import { elderCases, visitSchedules } from "@/lib/domain/mock-data";
 import { getAssignmentFormChecklist } from "@/lib/domain/visit-form-flow";
 import type {
@@ -82,15 +83,11 @@ export function AssignmentDashboard() {
 
   return (
     <div className="grid gap-4">
-      <section className="rounded-lg border bg-card p-4">
-        <div className="flex items-center gap-2">
-          <ClipboardList className="h-5 w-5 text-primary" />
-          <h1 className="text-2xl font-semibold">派案管理</h1>
-        </div>
-        <p className="mt-2 text-sm text-muted-foreground">
-          依里別、民政/社政身分、共訪需求、訪員資格、容量與風險產生派案建議，保留人工覆核。
-        </p>
-      </section>
+      <PageIntro
+        icon={ClipboardList}
+        title="派案管理"
+        description="依里別、民政/社政身分、共訪需求、訪員資格、容量與風險產生派案建議，保留人工覆核。"
+      />
 
       <section className="rounded-lg border bg-card p-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -109,7 +106,7 @@ export function AssignmentDashboard() {
           </Link>
         </div>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-5">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <AssignmentFlowStep
             icon={ClipboardList}
             title="待訪排程"
@@ -137,7 +134,7 @@ export function AssignmentDashboard() {
           />
         </div>
 
-        <div className="mt-4 grid gap-3 lg:grid-cols-4">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <RuleCard label="同里別" value="+25" detail="優先派給熟悉該里別的訪查人員。" />
           <RuleCard label="民政/社政符合" value="+15" detail="依案件需求比對訪員身分。" />
           <RuleCard label="共訪搭配完整" value="+10" detail="需共訪案件必須有民政與社政雙角色。" />
@@ -173,7 +170,7 @@ export function AssignmentDashboard() {
       </section>
 
       {data && selectedRecommendation && (
-        <section className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+        <section className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(24rem,1.05fr)]">
           <div className="rounded-lg border bg-card p-4">
             <h2 className="text-base font-semibold">左側：待派名冊</h2>
             <p className="mt-1 text-sm text-muted-foreground">

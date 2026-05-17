@@ -13,6 +13,7 @@ import {
   TableProperties,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PageIntro } from "@/components/ui/page-intro";
 import {
   governmentFormTemplates,
   governmentFormWorkflow,
@@ -196,25 +197,19 @@ export function GovernmentFormsDashboard() {
 
   return (
     <div className="grid gap-4">
-      <section className="rounded-lg border bg-card p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <TableProperties className="h-5 w-5 text-primary" />
-              <h1 className="text-2xl font-semibold">表單建檔管理</h1>
-            </div>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              管理政府表單、自訂表單、欄位與流程模板。PDF 匯入會先成為草稿，確認後再放入派案、訪視、督導與稽核流程。
-            </p>
-          </div>
+      <PageIntro
+        icon={TableProperties}
+        title="表單建檔管理"
+        description="管理政府表單、自訂表單、欄位與流程模板。PDF 匯入會先成為草稿，確認後再放入派案、訪視、督導與稽核流程。"
+        aside={
           <Button onClick={createTemplate}>
             <FilePlus2 className="h-4 w-4" />
             新增表單
           </Button>
-        </div>
-      </section>
+        }
+      />
 
-      <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+      <section className="grid gap-4 xl:grid-cols-[minmax(20rem,0.85fr)_minmax(0,1.15fr)]">
         <article className="rounded-lg border bg-card p-4">
           <div className="flex items-center gap-2">
             <Bot className="h-5 w-5 text-primary" />
@@ -266,7 +261,7 @@ export function GovernmentFormsDashboard() {
         </article>
       </section>
 
-      <section className="grid gap-3 md:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {templates.map((template) => (
           <button
             key={template.id}
@@ -283,7 +278,7 @@ export function GovernmentFormsDashboard() {
         ))}
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
+      <section className="grid gap-4 xl:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.2fr)]">
         <article className="rounded-lg border bg-card p-4">
           <h2 className="text-base font-semibold">{selectedTemplate.name}</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">

@@ -5,6 +5,7 @@ import { Bell, CheckCircle2, Send, TriangleAlert } from "lucide-react";
 import { useCanAny } from "@/components/auth/permission-provider";
 import { WorkgroupCommunicationCenter } from "@/components/manage/workgroup-communication-center";
 import { Button } from "@/components/ui/button";
+import { PageIntro } from "@/components/ui/page-intro";
 import type { IncidentDecisionResult, IncidentReport, NotificationTemplate } from "@/lib/domain/types";
 
 export function NotificationDashboard() {
@@ -57,15 +58,20 @@ export function NotificationDashboard() {
 
   return (
     <div className="grid gap-4">
-      <section className="rounded-lg border bg-card p-4">
-        <p className="text-sm font-medium text-primary">異常與通知</p>
-        <h1 className="mt-2 text-2xl font-semibold">異常通報與通知模板</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          異常可觸發督導通知、KPI 與後續稽核；外部通道先保留，不綁定品牌識別。
-        </p>
-      </section>
+      <PageIntro
+        icon={Bell}
+        eyebrow="異常與通知"
+        title="異常通報與通知模板"
+        description="異常可觸發督導通知、KPI 與後續稽核；外部通道先保留，不綁定品牌識別。"
+        aside={
+          <div className="grid min-w-[14rem] grid-cols-2 gap-2 text-sm">
+            <SummaryStat label="待處理" value={`${incidentReports.length}`} />
+            <SummaryStat label="通知模板" value={`${notificationTemplates.length}`} />
+          </div>
+        }
+      />
 
-      <section className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,1fr)]">
         <article className="rounded-lg border bg-card p-4">
           <div className="flex items-center gap-2">
             <TriangleAlert className="h-5 w-5 text-primary" />
@@ -158,6 +164,15 @@ export function NotificationDashboard() {
       )}
 
       <WorkgroupCommunicationCenter />
+    </div>
+  );
+}
+
+function SummaryStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border bg-background p-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 text-lg font-semibold">{value}</p>
     </div>
   );
 }

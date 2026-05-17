@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, CircleHelp, Flag, Map, UsersRound } from "lucide-react";
+import { PageIntro } from "@/components/ui/page-intro";
 import { getVisibleNavItems, navItems } from "@/lib/domain/navigation";
 import { sitemapSections } from "@/lib/domain/sitemap";
 import type { WorkspaceRole } from "@/lib/domain/types";
@@ -11,18 +12,19 @@ export function SitemapPanel({ role }: { role: WorkspaceRole }) {
 
   return (
     <div className="grid gap-4">
+      <PageIntro
+        icon={Map}
+        title="網站流程與使用者路徑"
+        description="讓管理者、督導、訪員與檢視者理解系統從註冊、加入工作空間、派案到訪查成果匯出的完整流程。"
+        aside={
+          <div className="rounded-lg border bg-background px-3 py-2 text-sm text-muted-foreground">
+            目前角色：<span className="font-medium text-foreground">{role.label}</span>
+          </div>
+        }
+      />
+
       <section className="rounded-lg border bg-card p-4">
-        <div className="flex items-center gap-2">
-          <Map className="h-5 w-5 text-primary" />
-          <h1 className="text-2xl font-semibold">網站流程與使用者路徑</h1>
-        </div>
-        <p className="mt-2 text-sm text-muted-foreground">
-          讓管理者、督導、訪員與檢視者理解系統從註冊、加入工作空間、派案到訪查成果匯出的完整流程。
-        </p>
-        <p className="mt-2 rounded-md bg-secondary px-3 py-2 text-sm text-muted-foreground">
-          目前角色：<span className="font-medium text-foreground">{role.label}</span>。下方只顯示此角色需要理解或可操作的流程入口。
-        </p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           <GuideCard
             title="先確認角色"
             description="不同角色看到的入口不同，先確認自己是管理者、督導、訪員或檢視者。"
@@ -39,8 +41,13 @@ export function SitemapPanel({ role }: { role: WorkspaceRole }) {
       </section>
 
       <section className="rounded-lg border bg-card p-4">
-        <h2 className="text-base font-semibold">建議操作順序</h2>
-        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-base font-semibold">建議操作順序</h2>
+          <span className="rounded-md bg-secondary px-2.5 py-1 text-xs text-muted-foreground">
+            依角色顯示
+          </span>
+        </div>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
           {visibleSections.map((section, index) => (
             <Link
               key={section.title}
@@ -89,7 +96,7 @@ export function SitemapPanel({ role }: { role: WorkspaceRole }) {
                 </Link>
               </div>
 
-            <div className="mt-4 grid gap-3 text-sm md:grid-cols-3">
+            <div className="grid gap-3 text-sm md:grid-cols-3">
               <PathInfo
                 icon={UsersRound}
                 label="適用角色"

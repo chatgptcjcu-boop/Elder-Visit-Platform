@@ -16,6 +16,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 import { StatCard } from "@/components/stat-card";
 import { TaskThread } from "@/components/task-thread";
+import { PageIntro } from "@/components/ui/page-intro";
 import { LimitUsageList } from "@/components/workspace/limit-usage-list";
 import { getUnit } from "@/lib/domain/mock-data";
 import { getRoleByKey } from "@/lib/domain/permissions";
@@ -33,22 +34,19 @@ export default async function DashboardPage() {
 
   return (
     <AppShell active="dashboard">
-      <section className="rounded-lg border bg-card p-4 sm:p-5">
-        <div className="grid gap-4 lg:grid-cols-[1.3fr_0.7fr] lg:items-center">
-          <div>
-            <p className="text-sm font-medium text-primary">{role.label}工作台</p>
-            <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">{roleDashboard.title}</h1>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-              {roleDashboard.description}
-            </p>
-          </div>
-          <div className="grid gap-2 rounded-lg border bg-background p-3 text-sm">
+      <PageIntro
+        icon={LayoutDashboard}
+        eyebrow={`${role.label}工作台`}
+        title={roleDashboard.title}
+        description={roleDashboard.description}
+        aside={
+          <div className="grid min-w-[16rem] gap-2 rounded-lg border bg-background p-3 text-sm">
             <StatusRow label="工作空間" value={workspace.name} />
             <StatusRow label="服務單位" value={unit?.unitName ?? "未指定單位"} />
             <StatusRow label="目前方案" value={workspace.planName} />
           </div>
-        </div>
-      </section>
+        }
+      />
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {roleDashboard.focusCards.map((card) => (
@@ -58,7 +56,9 @@ export default async function DashboardPage() {
                 <p className="text-sm font-semibold">{card.title}</p>
                 <p className="mt-1 text-sm leading-6 text-muted-foreground">{card.detail}</p>
               </div>
-              <card.icon className="h-5 w-5 shrink-0 text-primary" />
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                <card.icon className="h-5 w-5" />
+              </span>
             </div>
             <Link
               href={card.href}
