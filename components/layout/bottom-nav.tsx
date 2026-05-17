@@ -31,6 +31,12 @@ export function BottomNav({
   const primaryKeys = new Set(primaryItems.map((item) => item.key));
   const secondaryItems = items.filter((item) => !primaryKeys.has(item.key));
   const isActiveInMore = secondaryItems.some((item) => item.key === active);
+  const secondaryGroups = navGroups.filter((group) =>
+    secondaryItems.some((item) => item.group === group.key),
+  );
+  const activeGroup =
+    secondaryItems.find((item) => item.key === active)?.group ?? secondaryGroups[0]?.key ?? null;
+  const [openGroupKey, setOpenGroupKey] = useState<typeof activeGroup | null>(activeGroup);
 
   return (
     <div className="lg:hidden">
@@ -75,14 +81,24 @@ export function BottomNav({
                 return null;
               }
 
+              const isGroupOpen = openGroupKey === group.key;
+
               return (
-                <details key={group.key} className="group mb-2 rounded-lg border bg-background" open>
-                  <summary className="flex h-10 cursor-pointer list-none items-center justify-between px-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+                <section key={group.key} className="mb-2 rounded-lg border bg-background">
+                  <button
+                    type="button"
+                    aria-expanded={isGroupOpen}
+                    className="flex h-10 w-full items-center justify-between px-3 text-sm font-semibold"
+                    onClick={() =>
+                      setOpenGroupKey((current) => (current === group.key ? null : group.key))
+                    }
+                  >
                     <span>{group.label}</span>
                     <span className="text-xs font-medium text-muted-foreground">
                       {groupItems.length}
                     </span>
-                  </summary>
+                  </button>
+                  {isGroupOpen && (
                   <div className="grid grid-cols-3 gap-2 border-t p-2">
                     {groupItems.map((item) => {
                       const Icon = item.icon;
@@ -104,7 +120,8 @@ export function BottomNav({
                       );
                     })}
                   </div>
-                </details>
+                  )}
+                </section>
               );
             })}
           </div>

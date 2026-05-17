@@ -248,8 +248,9 @@ export function VisitDialogueForm({
             </p>
           )}
 
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-3 grid gap-2 sm:flex sm:flex-wrap">
             <Button
+              className="w-full sm:w-auto"
               type="button"
               variant="outline"
               disabled={careFormCompletion.percent < 100}
@@ -258,6 +259,7 @@ export function VisitDialogueForm({
               匯出 Word 套版
             </Button>
             <Button
+              className="w-full sm:w-auto"
               type="button"
               variant="outline"
               disabled={careFormCompletion.percent < 100}
@@ -274,13 +276,33 @@ export function VisitDialogueForm({
             />
           )}
 
+          <div className="mt-4 rounded-lg border bg-card p-3">
+            <p className="text-sm font-semibold">快速查看區段</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {newTaipeiCareFormSections.map((section, index) => (
+                <a
+                  key={`jump-${section.title}`}
+                  href={`#care-form-section-${index + 1}`}
+                  className="rounded-md bg-secondary px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
+                >
+                  {section.title}
+                </a>
+              ))}
+            </div>
+          </div>
+
           <div className="mt-4 grid gap-3">
-            {newTaipeiCareFormSections.map((section) => {
+            {newTaipeiCareFormSections.map((section, index) => {
               const sectionCompletion = careFormCompletion.sections.find(
                 (item) => item.title === section.title,
               );
               return (
-                <details key={section.title} className="rounded-lg border bg-card" open={section.title.startsWith("一、")}>
+                <details
+                  id={`care-form-section-${index + 1}`}
+                  key={section.title}
+                  className="scroll-mt-24 rounded-lg border bg-card"
+                  open={section.title.startsWith("一、")}
+                >
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">
                     <span>{section.title}</span>
                     <span className="rounded-md bg-secondary px-2 py-1 text-xs text-muted-foreground">

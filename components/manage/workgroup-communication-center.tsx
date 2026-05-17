@@ -239,7 +239,13 @@ export function WorkgroupCommunicationCenter() {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <h3 className="text-sm font-semibold">發布紀錄與讀取狀態</h3>
             {selectedMessage && (
-              <Button type="button" variant="outline" size="sm" onClick={() => markAllRead(selectedMessage.id)}>
+              <Button
+                className="w-full sm:w-auto"
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => markAllRead(selectedMessage.id)}
+              >
                 <CheckCheck className="h-4 w-4" />
                 模擬全部已讀
               </Button>
@@ -282,7 +288,7 @@ export function WorkgroupCommunicationCenter() {
             </h3>
             <div className="mt-3 grid gap-2">
               {selectedRecipients.map((recipient) => (
-                <div key={recipient.id} className="flex items-center justify-between gap-3 rounded-md border bg-background p-3 text-sm">
+                <div key={recipient.id} className="flex flex-col gap-2 rounded-md border bg-background p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="font-medium">{recipient.recipientName}</p>
                     <p className="text-xs text-muted-foreground">
@@ -305,7 +311,7 @@ export function WorkgroupCommunicationCenter() {
             <div className="mt-3 grid gap-2">
               {selectedReplies.map((reply) => (
                 <div key={reply.id} className="rounded-md border bg-background p-3 text-sm">
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <p className="font-medium">{reply.authorName}</p>
                     <span className="rounded-md bg-secondary px-2 py-1 text-xs">
                       {reply.source === "line" ? "LINE" : "站內"}
@@ -315,14 +321,14 @@ export function WorkgroupCommunicationCenter() {
                 </div>
               ))}
             </div>
-            <div className="mt-3 flex gap-2">
+            <div className="mt-3 grid gap-2 sm:flex">
               <input
                 className="h-10 min-w-0 flex-1 rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
                 placeholder="輸入回覆或處理備註"
                 value={replyDraft}
                 onChange={(event) => setReplyDraft(event.target.value)}
               />
-              <Button type="button" onClick={sendReply}>
+              <Button className="w-full sm:w-auto" type="button" onClick={sendReply}>
                 回覆
               </Button>
             </div>

@@ -229,6 +229,17 @@ export function AssignmentDashboard() {
             <p className="mt-1 text-sm text-muted-foreground">
               查看每位訪員工作量、區域與訓練狀態後，進行 1 對 1 分配。
             </p>
+            <div className="mt-4 rounded-lg border bg-primary/5 p-3">
+              <p className="text-xs font-medium text-primary">目前分配個案</p>
+              <p className="mt-1 text-sm font-semibold">
+                {caseMap.get(selectedRecommendation.caseId)?.name ?? "未知個案"}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                {caseMap.get(selectedRecommendation.caseId)?.caseCode ?? selectedRecommendation.caseId}
+                {" · "}
+                建議分數 {selectedRecommendation.score} 分
+              </p>
+            </div>
             <div className="mt-4 grid gap-3">
               {data.visitors.map((visitor) => {
                 const matched = visitor.id === selectedRecommendation.visitorId;

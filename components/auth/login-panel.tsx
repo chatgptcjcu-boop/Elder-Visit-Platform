@@ -69,7 +69,7 @@ export function LoginPanel() {
   return (
     <main className="min-h-screen bg-background px-4 py-6 text-foreground sm:px-6 lg:px-8">
       <div className="mx-auto grid min-h-[calc(100vh-3rem)] w-full max-w-6xl items-center gap-5 lg:grid-cols-[0.95fr_1.05fr]">
-        <section className="order-2 overflow-hidden rounded-lg border bg-card shadow-sm lg:order-1">
+        <section className="order-1 overflow-hidden rounded-lg border bg-card shadow-sm">
           <div className="border-b bg-primary/5 p-5 lg:p-6">
             <div className="flex flex-col">
               <BrandLogo variant="full" size="lg" className="h-28 w-full max-w-md" />
@@ -152,7 +152,7 @@ export function LoginPanel() {
           </div>
         </section>
 
-        <section className="order-1 grid gap-4 lg:order-2">
+        <section className="order-2 grid gap-4">
           <div className="rounded-lg border bg-card p-5 shadow-sm lg:p-6">
             <p className="text-sm font-medium text-primary">登入後會依權限分流</p>
             <h2 className="mt-2 text-xl font-semibold">不同角色看到不同畫面</h2>
