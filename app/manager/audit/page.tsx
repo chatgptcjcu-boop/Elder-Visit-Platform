@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { AppShell } from "@/components/layout/app-shell";
 import { AuditQueueCard } from "@/components/audit/audit-queue-card";
+import { ManagementWorkflowBar } from "@/components/manage/management-workflow-bar";
 import { auditQueue } from "@/lib/domain/audit-data";
 import { getRoleByKey } from "@/lib/domain/permissions";
 import type { WorkspaceRoleKey } from "@/lib/domain/types";
@@ -18,6 +19,7 @@ export default async function AuditPage() {
           阻擋項目未通過不得核准；提醒項目可由主管覆核後放行。
         </p>
       </section>
+      <ManagementWorkflowBar active="audit" />
 
       <section className="grid gap-3 lg:grid-cols-2">
         {auditQueue.map((item) => (

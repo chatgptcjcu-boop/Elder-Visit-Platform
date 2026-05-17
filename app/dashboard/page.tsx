@@ -17,6 +17,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { StatCard } from "@/components/stat-card";
 import { TaskThread } from "@/components/task-thread";
 import { PageIntro } from "@/components/ui/page-intro";
+import { ManagementPriorityQueue, ManagementWorkflowBar } from "@/components/manage/management-workflow-bar";
 import { LimitUsageList } from "@/components/workspace/limit-usage-list";
 import { getUnit } from "@/lib/domain/mock-data";
 import { getRoleByKey } from "@/lib/domain/permissions";
@@ -47,6 +48,13 @@ export default async function DashboardPage() {
           </div>
         }
       />
+
+      {(roleKey === "workspace_manager" || roleKey === "supervisor") && (
+        <>
+          <ManagementWorkflowBar active={roleKey === "supervisor" ? "audit" : "assignments"} />
+          <ManagementPriorityQueue />
+        </>
+      )}
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {roleDashboard.focusCards.map((card) => (

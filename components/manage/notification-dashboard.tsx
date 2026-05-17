@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Bell, CheckCircle2, Send, TriangleAlert } from "lucide-react";
 import { useCanAny } from "@/components/auth/permission-provider";
 import { WorkgroupCommunicationCenter } from "@/components/manage/workgroup-communication-center";
+import { ManagementWorkflowBar } from "@/components/manage/management-workflow-bar";
 import { Button } from "@/components/ui/button";
 import { PageIntro } from "@/components/ui/page-intro";
 import type { IncidentDecisionResult, IncidentReport, NotificationTemplate } from "@/lib/domain/types";
@@ -70,6 +71,7 @@ export function NotificationDashboard() {
           </div>
         }
       />
+      <ManagementWorkflowBar active="follow_up" />
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,1fr)]">
         <article className="rounded-lg border bg-card p-4">

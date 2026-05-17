@@ -15,6 +15,7 @@ import {
 import { useCan } from "@/components/auth/permission-provider";
 import { Button } from "@/components/ui/button";
 import { PageIntro } from "@/components/ui/page-intro";
+import { ManagementWorkflowBar } from "@/components/manage/management-workflow-bar";
 import { elderCases, visitSchedules } from "@/lib/domain/mock-data";
 import { getAssignmentFormChecklist } from "@/lib/domain/visit-form-flow";
 import type {
@@ -88,6 +89,7 @@ export function AssignmentDashboard() {
         title="派案管理"
         description="依里別、民政/社政身分、共訪需求、訪員資格、容量與風險產生派案建議，保留人工覆核。"
       />
+      <ManagementWorkflowBar active="assignments" />
 
       <section className="rounded-lg border bg-card p-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
