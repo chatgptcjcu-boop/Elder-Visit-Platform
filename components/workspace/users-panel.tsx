@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { Camera, CheckCircle2, IdCard, Plus, Save, Trash2, UserPlus, XCircle } from "lucide-react";
+import { Camera, CheckCircle2, IdCard, Plus, Save, Trash2, UserPlus, Volume2, XCircle } from "lucide-react";
 import { useCan } from "@/components/auth/permission-provider";
 import { Button } from "@/components/ui/button";
 import { workspaceRoles } from "@/lib/domain/permissions";
@@ -373,6 +373,7 @@ export function VisitorRegistrationForm({
   const [headshotProcessing, setHeadshotProcessing] = useState(false);
   const [headshotMessage, setHeadshotMessage] = useState<string | null>(null);
   const displayName = createVisitorDisplayName(form);
+  const headshotInstruction = "請到牆壁白色的背景處拍攝，臉部看向鏡頭，保持光線明亮。";
   const canSubmit = Boolean(
     form.fullName.trim() &&
       form.email.trim() &&
@@ -428,6 +429,19 @@ export function VisitorRegistrationForm({
     } finally {
       setHeadshotProcessing(false);
     }
+  }
+
+  function speakHeadshotInstruction() {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      setHeadshotMessage("此瀏覽器不支援語音播放，請依畫面文字提示拍攝。");
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(headshotInstruction);
+    utterance.lang = "zh-TW";
+    utterance.rate = 0.92;
+    window.speechSynthesis.speak(utterance);
   }
 
   async function submit() {
@@ -629,9 +643,19 @@ export function VisitorRegistrationForm({
           </div>
 
           <div className="rounded-lg border bg-background p-3">
-            <div className="flex items-center gap-2">
-              <Camera className="h-4 w-4 text-primary" />
-              <p className="text-sm font-semibold">自拍證件照</p>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Camera className="h-4 w-4 text-primary" />
+                <p className="text-sm font-semibold">自拍證件照</p>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={speakHeadshotInstruction}>
+                <Volume2 className="h-4 w-4" />
+                語音提示
+              </Button>
+            </div>
+            <div className="mt-3 rounded-md border border-primary/20 bg-primary/5 p-3">
+              <p className="text-sm font-semibold text-primary">拍攝前請先注意</p>
+              <p className="mt-1 text-sm leading-6 text-foreground">{headshotInstruction}</p>
             </div>
             <div className="mt-3 rounded-md bg-white p-4">
               <div className="mx-auto aspect-[3/4] w-28 overflow-hidden rounded border bg-white">
