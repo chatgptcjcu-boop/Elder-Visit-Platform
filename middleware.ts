@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-const publicRoutes = ["/", "/login", "/offline"];
+const publicRoutes = ["/", "/login", "/register", "/offline"];
 const supabaseCookiePrefixes = ["sb-", "supabase-auth-token"];
 
 export function middleware(request: NextRequest) {
