@@ -7,6 +7,6 @@ export async function POST(request: NextRequest) {
   const submission = (await request.json()) as VisitorRegistrationSubmission;
 
   return NextResponse.json({
-    data: submitVisitorRegistration(submission),
+    data: await submitVisitorRegistration(submission),
   });
 }

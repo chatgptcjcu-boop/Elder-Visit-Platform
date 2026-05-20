@@ -7,12 +7,12 @@ import {
 } from "@/lib/domain/user-management";
 import type { UserRegistrationDecision } from "@/lib/domain/types";
 
-export function GET(request: NextRequest) {
+export async function GET(request: NextRequest) {
   const forbidden = requireCapability(request, "users.manage");
   if (forbidden) return forbidden;
 
   return NextResponse.json({
-    data: getUserManagementOverview(),
+    data: await getUserManagementOverview(),
   });
 }
 

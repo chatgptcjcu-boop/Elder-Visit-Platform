@@ -231,6 +231,14 @@ export type UserRegistrationDecisionResult = {
   nextStep: string;
 };
 
+export type VisitorRegistrationSubmissionResult = {
+  request: UserRegistrationRequest;
+  message: string;
+  nextStep: string;
+  source: "supabase" | "memory_fallback";
+  warning: string | null;
+};
+
 export type WorkspaceModuleKey =
   | "case_import"
   | "assignment"

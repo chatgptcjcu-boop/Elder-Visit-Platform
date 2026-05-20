@@ -1,9 +1,13 @@
 import { getCurrentWorkspace } from "@/lib/domain/mock-data";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type {
   UserRegistrationDecision,
   UserRegistrationDecisionResult,
   UserRegistrationRequest,
   VisitorRegistrationSubmission,
+  VisitorRegistrationSubmissionResult,
+  VisitorRegistrationWorkerGroup,
+  WorkspaceRoleKey,
 } from "@/lib/domain/types";
 
 export const visitorRegistrationDepartments = [
@@ -80,12 +84,13 @@ export const registrationRequests: UserRegistrationRequest[] = [
   },
 ];
 
-export function getUserManagementOverview() {
+export async function getUserManagementOverview() {
   const workspace = getCurrentWorkspace();
+  const supabaseRequests = await getSupabaseRegistrationRequests();
 
   return {
     workspace,
-    registrationRequests,
+    registrationRequests: mergeRegistrationRequests(supabaseRequests, registrationRequests),
     flow: [
       "使用者建立帳號並完成 email 驗證。",
       "新訪員填寫清冊欄位：姓名、性別、身分證字號、民政/社政、職稱、公務信箱與教育訓練。",
@@ -116,7 +121,9 @@ export function createVisitorDisplayName(
   return `${submission.rootUnitName}${department}-${submission.fullName || "未填姓名"}-${jobTitle}`;
 }
 
-export function submitVisitorRegistration(submission: VisitorRegistrationSubmission) {
+export async function submitVisitorRegistration(
+  submission: VisitorRegistrationSubmission,
+): Promise<VisitorRegistrationSubmissionResult> {
   const displayName = createVisitorDisplayName(submission);
   const request: UserRegistrationRequest = {
     id: `reg_${Date.now()}`,
@@ -145,11 +152,17 @@ export function submitVisitorRegistration(submission: VisitorRegistrationSubmiss
   };
 
   registrationRequests.unshift(request);
+  const supabaseResult = await insertSupabaseRegistrationRequest(request);
 
   return {
-    request,
+    request: supabaseResult.request ?? request,
     message: `${displayName} 的訪員註冊資料已送出。`,
-    nextStep: "承辦管理者可在使用者管理頁審核，通過後再納入訪員資格檔與派案流程。",
+    nextStep:
+      supabaseResult.source === "supabase"
+        ? "已正式寫入 Supabase，承辦管理者可在使用者管理頁審核。"
+        : "目前已暫存送出，請設定 SUPABASE_SERVICE_ROLE_KEY 後才會永久寫入 Supabase。",
+    source: supabaseResult.source,
+    warning: supabaseResult.warning,
   };
 }
 
@@ -183,3 +196,294 @@ export function reviewRegistration(
     nextStep: `建立 workspace_membership，角色為 ${decision.roleKey}，下次登入依此角色顯示畫面。`,
   };
 }
+
+async function getSupabaseRegistrationRequests(): Promise<UserRegistrationRequest[]> {
+  try {
+    const supabase = createAdminClient();
+    const { data, error } = await (supabase as unknown as RegistrationRequestClient)
+      .from("workspace_registration_requests")
+      .select("*")
+      .order("submitted_at", { ascending: false })
+      .limit(100);
+
+    if (error || !data) {
+      return [];
+    }
+
+    return data.map(mapRegistrationRow);
+  } catch {
+    return [];
+  }
+}
+
+async function insertSupabaseRegistrationRequest(
+  request: UserRegistrationRequest,
+): Promise<{
+  request: UserRegistrationRequest | null;
+  source: "supabase" | "memory_fallback";
+  warning: string | null;
+}> {
+  try {
+    const supabase = createAdminClient();
+    const workspace = await getSupabaseActiveWorkspace();
+    const profile = request.visitorRegistrationProfile;
+    const { data, error } = await (supabase as unknown as RegistrationRequestWriteClient)
+      .from("workspace_registration_requests")
+      .insert({
+        email: request.email,
+        full_name: request.fullName,
+        requested_unit_name: request.requestedUnitName,
+        requested_workspace_id: workspace?.id ?? null,
+        requested_role_key: request.requestedRoleKey,
+        status: request.status,
+        review_note: request.reviewNote,
+        submitted_at: request.submittedAt,
+        root_unit_name: profile?.rootUnitName ?? null,
+        department_name: profile?.departmentName ?? null,
+        department_other: profile?.departmentOther ?? null,
+        job_title: profile?.jobTitle ?? null,
+        job_title_other: profile?.jobTitleOther ?? null,
+        display_name: profile?.displayName ?? request.fullName,
+        gender: profile?.gender ?? null,
+        national_id: profile?.nationalId ?? null,
+        worker_group: profile?.workerGroup ?? null,
+        official_email: profile?.officialEmail ?? request.email,
+        phone: profile?.phone ?? null,
+        training_completed: profile?.trainingCompleted ?? false,
+        training_completed_at: profile?.trainingCompletedAt ?? null,
+        visitor_certificate_no: profile?.visitorCertificateNo ?? null,
+        headshot_original_url: profile?.headshotOriginalUrl ?? null,
+        headshot_processed_url: profile?.headshotProcessedUrl ?? null,
+        social_bureau_review_status: profile?.socialBureauReviewStatus ?? "not_sent",
+        social_bureau_reviewed_at: profile?.socialBureauReviewedAt ?? null,
+        social_bureau_review_note: profile?.socialBureauReviewNote ?? null,
+      })
+      .select("*")
+      .single();
+
+    if (error || !data) {
+      return {
+        request: null,
+        source: "memory_fallback",
+        warning: "Supabase 寫入失敗，已改用暫存。請確認 0026 migration 與 service role key。",
+      };
+    }
+
+    return {
+      request: mapRegistrationRow(data),
+      source: "supabase",
+      warning: null,
+    };
+  } catch {
+    return {
+      request: null,
+      source: "memory_fallback",
+      warning: "Supabase 管理端環境尚未設定，已改用暫存。",
+    };
+  }
+}
+
+async function getSupabaseActiveWorkspace() {
+  try {
+    const supabase = createAdminClient();
+    const { data, error } = await (supabase as unknown as ActiveWorkspaceClient)
+      .from("workspaces")
+      .select("id, workspace_name")
+      .eq("status", "active")
+      .limit(1)
+      .single();
+
+    if (error || !data) {
+      return null;
+    }
+
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function mergeRegistrationRequests(
+  supabaseRequests: UserRegistrationRequest[],
+  fallbackRequests: UserRegistrationRequest[],
+) {
+  const seen = new Set<string>();
+  return [...supabaseRequests, ...fallbackRequests].filter((request) => {
+    const key = `${request.id}:${request.email}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function mapRegistrationRow(row: WorkspaceRegistrationRequestRow): UserRegistrationRequest {
+  const fallbackWorkspace = getCurrentWorkspace();
+  const workerGroup = normalizeWorkerGroup(row.worker_group);
+  const status = normalizeRegistrationStatus(row.status);
+  const socialBureauReviewStatus = normalizeReviewStatus(row.social_bureau_review_status);
+
+  return {
+    id: row.id,
+    email: row.email,
+    fullName: row.full_name,
+    requestedUnitName: row.requested_unit_name ?? row.root_unit_name ?? "未指定單位",
+    requestedWorkspaceId: row.requested_workspace_id,
+    requestedWorkspaceName: fallbackWorkspace.name,
+    requestedRoleKey: normalizeRoleKey(row.requested_role_key),
+    status,
+    submittedAt: row.submitted_at,
+    reviewNote: row.review_note,
+    visitorRegistrationProfile:
+      row.root_unit_name || row.department_name || row.job_title || row.national_id
+        ? {
+            rootUnitName: row.root_unit_name ?? "永和區公所",
+            departmentName: row.department_name ?? "其他",
+            departmentOther: row.department_other,
+            jobTitle: row.job_title ?? "其他",
+            jobTitleOther: row.job_title_other,
+            displayName: row.display_name ?? row.full_name,
+            gender: normalizeGender(row.gender),
+            nationalId: row.national_id ?? "",
+            workerGroup,
+            officialEmail: row.official_email ?? row.email,
+            phone: row.phone ?? "",
+            trainingCompleted: Boolean(row.training_completed),
+            trainingCompletedAt: row.training_completed_at,
+            visitorCertificateNo: row.visitor_certificate_no,
+            headshotOriginalUrl: row.headshot_original_url,
+            headshotProcessedUrl: row.headshot_processed_url,
+            socialBureauReviewStatus,
+            socialBureauReviewedAt: row.social_bureau_reviewed_at,
+            socialBureauReviewNote: row.social_bureau_review_note,
+            note: null,
+          }
+        : undefined,
+  };
+}
+
+function normalizeRegistrationStatus(value: string): UserRegistrationRequest["status"] {
+  if (
+    value === "draft" ||
+    value === "email_verified" ||
+    value === "pending_workspace_review" ||
+    value === "pending_supervisor_review" ||
+    value === "pending_social_bureau_review" ||
+    value === "approved" ||
+    value === "rejected"
+  ) {
+    return value;
+  }
+
+  return "pending_workspace_review";
+}
+
+function normalizeRoleKey(value: string): WorkspaceRoleKey {
+  if (
+    value === "workspace_owner" ||
+    value === "workspace_manager" ||
+    value === "supervisor" ||
+    value === "visitor" ||
+    value === "auditor" ||
+    value === "viewer"
+  ) {
+    return value;
+  }
+
+  return "visitor";
+}
+
+function normalizeWorkerGroup(value: string | null): VisitorRegistrationWorkerGroup {
+  if (value === "social_affairs" || value === "civil_affairs") {
+    return value;
+  }
+
+  return "civil_affairs";
+}
+
+function normalizeGender(value: string | null): "男" | "女" | "其他" {
+  if (value === "男" || value === "女" || value === "其他") {
+    return value;
+  }
+
+  return "其他";
+}
+
+function normalizeReviewStatus(value: string | null) {
+  if (value === "not_sent" || value === "pending" || value === "approved" || value === "rejected") {
+    return value;
+  }
+
+  return "not_sent";
+}
+
+type WorkspaceRegistrationRequestRow = {
+  id: string;
+  email: string;
+  full_name: string;
+  requested_unit_name: string | null;
+  requested_workspace_id: string | null;
+  requested_role_key: string;
+  status: string;
+  review_note: string | null;
+  submitted_at: string;
+  root_unit_name: string | null;
+  department_name: string | null;
+  department_other: string | null;
+  job_title: string | null;
+  job_title_other: string | null;
+  display_name: string | null;
+  gender: string | null;
+  national_id: string | null;
+  worker_group: string | null;
+  official_email: string | null;
+  phone: string | null;
+  training_completed: boolean;
+  training_completed_at: string | null;
+  visitor_certificate_no: string | null;
+  headshot_original_url: string | null;
+  headshot_processed_url: string | null;
+  social_bureau_review_status: string;
+  social_bureau_reviewed_at: string | null;
+  social_bureau_review_note: string | null;
+};
+
+type RegistrationRequestClient = {
+  from(table: "workspace_registration_requests"): {
+    select(query: string): {
+      order(column: string, options: { ascending: boolean }): {
+        limit(count: number): Promise<{
+          data: WorkspaceRegistrationRequestRow[] | null;
+          error: unknown;
+        }>;
+      };
+    };
+  };
+};
+
+type RegistrationRequestWriteClient = {
+  from(table: "workspace_registration_requests"): {
+    insert(row: Record<string, unknown>): {
+      select(query: string): {
+        single(): Promise<{
+          data: WorkspaceRegistrationRequestRow | null;
+          error: unknown;
+        }>;
+      };
+    };
+  };
+};
+
+type ActiveWorkspaceClient = {
+  from(table: "workspaces"): {
+    select(query: string): {
+      eq(column: string, value: string): {
+        limit(count: number): {
+          single(): Promise<{
+            data: { id: string; workspace_name: string } | null;
+            error: unknown;
+          }>;
+        };
+      };
+    };
+  };
+};

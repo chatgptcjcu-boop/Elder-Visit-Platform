@@ -54,5 +54,6 @@
 
 - `anon public key` 可以放在 `NEXT_PUBLIC_SUPABASE_ANON_KEY`。
 - `service_role key` 不要貼在前端，也不要放入 `NEXT_PUBLIC_*`。
+- 訪員公開註冊會由伺服器端寫入 `workspace_registration_requests`，正式環境需設定 `SUPABASE_SERVICE_ROLE_KEY`，否則系統會只保留暫存 fallback。
 - 目前程式已有 Supabase 連線設定，但 repository 仍有 mock fallback。資料表建立後，下一步才是逐頁把資料來源改成 Supabase 查詢。
 - RLS 已在 migration 中啟用，正式接資料時要以登入帳號、工作空間成員與角色權限做查詢範圍控管。

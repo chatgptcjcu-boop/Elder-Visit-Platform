@@ -11,6 +11,7 @@ import type {
   UserRegistrationDecisionResult,
   UserRegistrationRequest,
   VisitorRegistrationSubmission,
+  VisitorRegistrationSubmissionResult,
   VisitorRegistrationWorkerGroup,
   VisitorProfile,
   VisitorWorkerType,
@@ -343,12 +344,15 @@ export function VisitorRegistrationForm({
       headers: { "content-type": "application/json" },
       body: JSON.stringify(form),
     });
-    const json = (await response.json()) as {
-      data?: { request: UserRegistrationRequest; message: string; nextStep: string };
-    };
+    const json = (await response.json()) as { data?: VisitorRegistrationSubmissionResult };
 
     if (json.data?.request) {
-      onSubmitted(json.data.request, json.data.message);
+      onSubmitted(
+        json.data.request,
+        json.data.source === "supabase"
+          ? `${json.data.message}（已正式寫入 Supabase）`
+          : `${json.data.message}（${json.data.warning ?? "目前為暫存資料"}）`,
+      );
       setForm(initialForm);
     }
   }
