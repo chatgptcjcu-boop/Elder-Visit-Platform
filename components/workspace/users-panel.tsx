@@ -33,9 +33,10 @@ export function UsersPanel() {
   const [visitorProfiles, setVisitorProfiles] = useState<VisitorProfile[]>(defaultVisitors);
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
   const [registrationMessage, setRegistrationMessage] = useState<string | null>(null);
+  const [reviewingRequestId, setReviewingRequestId] = useState<string | null>(null);
 
   async function loadUsers() {
-    const response = await fetch("/api/users");
+    const response = await fetch(`/api/users?ts=${Date.now()}`, { cache: "no-store" });
     const json = (await response.json()) as { data?: UsersPayload };
     setPayload(json.data ?? null);
   }
@@ -59,20 +60,64 @@ export function UsersPanel() {
     decision: "approve" | "reject",
     roleKey: WorkspaceRoleKey = request.requestedRoleKey,
   ) {
-    const response = await fetch("/api/users", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        requestId: request.id,
-        decision,
-        roleKey,
-        workspaceId: request.requestedWorkspaceId ?? payload?.workspace.id,
-        note: "使用者管理頁審核",
-      }),
-    });
-    const json = (await response.json()) as { data?: UserRegistrationDecisionResult };
-    setResult(json.data ?? null);
-    await loadUsers();
+    setReviewingRequestId(request.id);
+    try {
+      const response = await fetch("/api/users", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          requestId: request.id,
+          decision,
+          roleKey,
+          workspaceId: request.requestedWorkspaceId ?? payload?.workspace.id,
+          note: "使用者管理頁審核",
+        }),
+      });
+      const json = (await response.json()) as {
+        data?: UserRegistrationDecisionResult;
+        error?: { message?: string };
+      };
+
+      if (!response.ok || !json.data) {
+        setResult({
+          requestId: request.id,
+          status: request.status,
+          message: json.error?.message ?? "審核動作沒有完成。",
+          nextStep: "請確認目前登入角色有審核權限，或重新整理頁面後再試一次。",
+        });
+        return;
+      }
+
+      setResult(json.data);
+      setPayload((current) =>
+        current
+          ? {
+              ...current,
+              registrationRequests: current.registrationRequests.map((item) =>
+                item.id === request.id
+                  ? {
+                      ...item,
+                      status: json.data!.status,
+                      reviewNote: json.data!.message,
+                      visitorRegistrationProfile: item.visitorRegistrationProfile
+                        ? {
+                            ...item.visitorRegistrationProfile,
+                            socialBureauReviewStatus:
+                              json.data!.status === "approved" ? "approved" : "rejected",
+                            socialBureauReviewedAt: new Date().toISOString(),
+                            socialBureauReviewNote: json.data!.message,
+                          }
+                        : item.visitorRegistrationProfile,
+                    }
+                  : item,
+              ),
+            }
+          : current,
+      );
+      await loadUsers();
+    } finally {
+      setReviewingRequestId(null);
+    }
   }
 
   return (
@@ -129,7 +174,11 @@ export function UsersPanel() {
           </section>
 
           <section className="grid gap-3 lg:grid-cols-2">
-            {payload.registrationRequests.map((request) => (
+            {payload.registrationRequests.map((request) => {
+              const isReviewed = request.status === "approved" || request.status === "rejected";
+              const isReviewing = reviewingRequestId === request.id;
+
+              return (
               <article key={request.id} className="rounded-lg border bg-card p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -175,27 +224,36 @@ export function UsersPanel() {
                   )}
                   {request.reviewNote && <p>{request.reviewNote}</p>}
                 </div>
-                <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                  <Button disabled={!canReviewUsers} onClick={() => review(request, "approve")}>
-                    <CheckCircle2 className="h-4 w-4" />
-                    核准加入
-                  </Button>
-                  <Button
-                    variant="outline"
-                    disabled={!canReviewUsers}
-                    onClick={() => review(request, "reject")}
-                  >
-                    <XCircle className="h-4 w-4" />
-                    退回申請
-                  </Button>
-                </div>
+                {isReviewed ? (
+                  <div className="mt-4 rounded-md border border-primary/20 bg-primary/5 p-3 text-sm font-medium text-primary">
+                    {request.status === "approved" ? "已通過，訪員資格已建立。" : "已退回，未建立訪員資格。"}
+                  </div>
+                ) : (
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    <Button
+                      disabled={!canReviewUsers || isReviewing}
+                      onClick={() => review(request, "approve")}
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      {isReviewing ? "處理中" : "核准加入"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      disabled={!canReviewUsers || isReviewing}
+                      onClick={() => review(request, "reject")}
+                    >
+                      <XCircle className="h-4 w-4" />
+                      退回申請
+                    </Button>
+                  </div>
+                )}
                 {!canReviewUsers && (
                   <p className="mt-2 text-sm text-muted-foreground">
                     目前角色沒有審核註冊申請權限。
                   </p>
                 )}
               </article>
-            ))}
+            )})}
           </section>
 
           <VisitorQualificationManager
@@ -331,10 +389,49 @@ export function VisitorRegistrationForm({
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = typeof reader.result === "string" ? reader.result : null;
+      if (!dataUrl) return;
+
       updateForm({
         headshotOriginalUrl: dataUrl,
         headshotProcessedUrl: dataUrl,
       });
+
+      const image = new Image();
+      image.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 300;
+        canvas.height = 400;
+        const context = canvas.getContext("2d");
+        if (!context) return;
+
+        context.fillStyle = "#ffffff";
+        context.fillRect(0, 0, canvas.width, canvas.height);
+
+        const sourceRatio = image.width / image.height;
+        const targetRatio = canvas.width / canvas.height;
+        const sourceWidth = sourceRatio > targetRatio ? image.height * targetRatio : image.width;
+        const sourceHeight = sourceRatio > targetRatio ? image.height : image.width / targetRatio;
+        const sourceX = (image.width - sourceWidth) / 2;
+        const sourceY = (image.height - sourceHeight) / 2;
+
+        context.drawImage(
+          image,
+          sourceX,
+          sourceY,
+          sourceWidth,
+          sourceHeight,
+          0,
+          0,
+          canvas.width,
+          canvas.height,
+        );
+
+        updateForm({
+          headshotOriginalUrl: dataUrl,
+          headshotProcessedUrl: canvas.toDataURL("image/jpeg", 0.9),
+        });
+      };
+      image.src = dataUrl;
     };
     reader.readAsDataURL(file);
   }
@@ -566,7 +663,7 @@ export function VisitorRegistrationForm({
               onChange={(event) => handlePhoto(event.target.files?.[0])}
             />
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
-              第一版先建立手機拍照、上傳與白底一寸預覽；AI 去背與正式裁切會接在下一階段。
+              目前已完成手機拍照、上傳與白底一寸比例裁切預覽；真正 AI 去背換底尚未接入影像服務。
             </p>
           </div>
         </div>
