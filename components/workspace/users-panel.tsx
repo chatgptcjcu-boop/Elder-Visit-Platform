@@ -1,8 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { Camera, CheckCircle2, IdCard, Plus, Save, Trash2, UserPlus, Volume2, XCircle } from "lucide-react";
+import {
+  Camera,
+  CheckCircle2,
+  Download,
+  IdCard,
+  Plus,
+  Save,
+  Search,
+  Trash2,
+  UserPlus,
+  Volume2,
+  XCircle,
+} from "lucide-react";
 import { useCan } from "@/components/auth/permission-provider";
 import { Button } from "@/components/ui/button";
 import { workspaceRoles } from "@/lib/domain/permissions";
@@ -34,6 +46,21 @@ export function UsersPanel() {
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
   const [registrationMessage, setRegistrationMessage] = useState<string | null>(null);
   const [reviewingRequestId, setReviewingRequestId] = useState<string | null>(null);
+  const pendingRequests = useMemo(
+    () =>
+      payload?.registrationRequests.filter(
+        (request) => request.status !== "approved" && request.status !== "rejected",
+      ) ?? [],
+    [payload?.registrationRequests],
+  );
+  const approvedRequests = useMemo(
+    () => payload?.registrationRequests.filter((request) => request.status === "approved") ?? [],
+    [payload?.registrationRequests],
+  );
+  const rejectedRequests = useMemo(
+    () => payload?.registrationRequests.filter((request) => request.status === "rejected") ?? [],
+    [payload?.registrationRequests],
+  );
 
   async function loadUsers() {
     const response = await fetch(`/api/users?ts=${Date.now()}`, { cache: "no-store" });
@@ -171,11 +198,40 @@ export function UsersPanel() {
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
               依公所清冊欄位檢查民政/社政身分、職稱、公務信箱、教育訓練與社會局覆核狀態。
             </p>
+            <div className="mt-4 grid gap-3 md:grid-cols-4">
+              <ReviewMetric label="待審核" value={pendingRequests.length} />
+              <ReviewMetric label="已通過名冊" value={approvedRequests.length} />
+              <ReviewMetric label="已退回" value={rejectedRequests.length} />
+              <ReviewMetric
+                label="有證件照"
+                value={
+                  approvedRequests.filter(
+                    (request) => request.visitorRegistrationProfile?.headshotProcessedUrl,
+                  ).length
+                }
+              />
+            </div>
           </section>
 
-          <section className="grid gap-3 lg:grid-cols-2">
-            {payload.registrationRequests.map((request) => {
-              const isReviewed = request.status === "approved" || request.status === "rejected";
+          <section className="rounded-lg border bg-card p-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="font-semibold">待審核申請</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  只顯示尚未通過或退回的申請，通過後會自動進入下方名冊管理。
+                </p>
+              </div>
+              <span className="rounded-full bg-secondary px-3 py-1 text-sm font-medium">
+                {pendingRequests.length} 筆待處理
+              </span>
+            </div>
+            {pendingRequests.length === 0 ? (
+              <div className="mt-4 rounded-md border border-dashed bg-background p-4 text-sm text-muted-foreground">
+                目前沒有待審核申請。已通過的志工請到下方「已通過訪員名冊」管理與匯出。
+              </div>
+            ) : (
+              <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                {pendingRequests.map((request) => {
               const isReviewing = reviewingRequestId === request.id;
 
               return (
@@ -224,29 +280,23 @@ export function UsersPanel() {
                   )}
                   {request.reviewNote && <p>{request.reviewNote}</p>}
                 </div>
-                {isReviewed ? (
-                  <div className="mt-4 rounded-md border border-primary/20 bg-primary/5 p-3 text-sm font-medium text-primary">
-                    {request.status === "approved" ? "已通過，訪員資格已建立。" : "已退回，未建立訪員資格。"}
-                  </div>
-                ) : (
-                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                    <Button
-                      disabled={!canReviewUsers || isReviewing}
-                      onClick={() => review(request, "approve")}
-                    >
-                      <CheckCircle2 className="h-4 w-4" />
-                      {isReviewing ? "處理中" : "核准加入"}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      disabled={!canReviewUsers || isReviewing}
-                      onClick={() => review(request, "reject")}
-                    >
-                      <XCircle className="h-4 w-4" />
-                      退回申請
-                    </Button>
-                  </div>
-                )}
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  <Button
+                    disabled={!canReviewUsers || isReviewing}
+                    onClick={() => review(request, "approve")}
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    {isReviewing ? "處理中" : "核准加入"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={!canReviewUsers || isReviewing}
+                    onClick={() => review(request, "reject")}
+                  >
+                    <XCircle className="h-4 w-4" />
+                    退回申請
+                  </Button>
+                </div>
                 {!canReviewUsers && (
                   <p className="mt-2 text-sm text-muted-foreground">
                     目前角色沒有審核註冊申請權限。
@@ -254,7 +304,11 @@ export function UsersPanel() {
                 )}
               </article>
             )})}
+              </div>
+            )}
           </section>
+
+          <ApprovedVisitorRegistry requests={approvedRequests} />
 
           <VisitorQualificationManager
             profiles={visitorProfiles}
@@ -339,6 +393,247 @@ const reviewStatusLabels: Record<string, string> = {
   approved: "通過",
   rejected: "不通過",
 };
+
+function ReviewMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-md border bg-background p-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 text-2xl font-semibold text-foreground">{value}</p>
+    </div>
+  );
+}
+
+function ApprovedVisitorRegistry({ requests }: { requests: UserRegistrationRequest[] }) {
+  const [query, setQuery] = useState("");
+  const [workerGroup, setWorkerGroup] = useState<"all" | VisitorRegistrationWorkerGroup>("all");
+  const filteredRequests = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    return requests.filter((request) => {
+      const profile = request.visitorRegistrationProfile;
+      const matchesGroup = workerGroup === "all" || profile?.workerGroup === workerGroup;
+      const searchText = [
+        profile?.displayName,
+        request.fullName,
+        request.email,
+        request.requestedUnitName,
+        profile?.departmentName,
+        profile?.jobTitle,
+        profile?.phone,
+        profile?.visitorCertificateNo,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return matchesGroup && (!normalizedQuery || searchText.includes(normalizedQuery));
+    });
+  }, [query, requests, workerGroup]);
+  const photoReadyCount = filteredRequests.filter(
+    (request) => request.visitorRegistrationProfile?.headshotProcessedUrl,
+  ).length;
+
+  function exportRosterCsv() {
+    const rows = filteredRequests.map((request, index) => {
+      const profile = request.visitorRegistrationProfile;
+      return {
+        序號: String(index + 1),
+        顯示名稱: profile?.displayName ?? request.fullName,
+        姓名: request.fullName,
+        信箱: request.email,
+        公務信箱: profile?.officialEmail ?? "",
+        手機: profile?.phone ?? "",
+        單位: request.requestedUnitName,
+        科室: profile?.departmentName ?? "",
+        職稱: profile ? normalizedJobTitle(profile) : "",
+        類別: profile ? workerGroupLabels[profile.workerGroup] : "",
+        性別: profile?.gender ?? "",
+        身分證字號: profile?.nationalId ?? "",
+        教育訓練: profile?.trainingCompleted ? "已完成" : "未完成",
+        教育訓練日期: profile?.trainingCompletedAt ?? "",
+        訪員證號: profile?.visitorCertificateNo ?? "",
+        照片狀態: profile?.headshotProcessedUrl ? "有照片" : "缺照片",
+        審核通過時間: profile?.socialBureauReviewedAt ?? request.submittedAt,
+      };
+    });
+
+    downloadTextFile("已通過訪員名冊.csv", toCsv(rows), "text/csv;charset=utf-8");
+  }
+
+  function exportPhotoManifestCsv() {
+    const rows = filteredRequests.map((request, index) => {
+      const profile = request.visitorRegistrationProfile;
+      const displayName = profile?.displayName ?? request.fullName;
+      return {
+        序號: String(index + 1),
+        顯示名稱: displayName,
+        建議照片檔名: `${sanitizeFilename(displayName)}.jpg`,
+        照片資料: profile?.headshotProcessedUrl ?? "",
+      };
+    });
+
+    downloadTextFile("已通過訪員照片索引.csv", toCsv(rows), "text/csv;charset=utf-8");
+  }
+
+  function exportFullJson() {
+    const rows = filteredRequests.map((request, index) => ({
+      index: index + 1,
+      id: request.id,
+      email: request.email,
+      fullName: request.fullName,
+      requestedUnitName: request.requestedUnitName,
+      status: request.status,
+      submittedAt: request.submittedAt,
+      profile: request.visitorRegistrationProfile,
+    }));
+
+    downloadTextFile(
+      "已通過訪員完整資料含照片.json",
+      JSON.stringify(rows, null, 2),
+      "application/json;charset=utf-8",
+    );
+  }
+
+  return (
+    <section className="rounded-lg border bg-card p-4">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+        <div>
+          <h2 className="font-semibold">已通過訪員名冊管理</h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            審核通過後集中在這裡管理，適合 200 位以上志工用搜尋、篩選與匯出處理，不再用卡片連續排列。
+          </p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-3 xl:min-w-[520px]">
+          <Button type="button" variant="outline" onClick={exportRosterCsv} disabled={filteredRequests.length === 0}>
+            <Download className="h-4 w-4" />
+            匯出名冊 CSV
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={exportPhotoManifestCsv}
+            disabled={filteredRequests.length === 0}
+          >
+            <Download className="h-4 w-4" />
+            匯出照片索引
+          </Button>
+          <Button type="button" onClick={exportFullJson} disabled={filteredRequests.length === 0}>
+            <Download className="h-4 w-4" />
+            完整匯出含照片
+          </Button>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <ReviewMetric label="目前篩選筆數" value={filteredRequests.length} />
+        <ReviewMetric label="已處理照片" value={photoReadyCount} />
+        <ReviewMetric label="缺照片" value={Math.max(filteredRequests.length - photoReadyCount, 0)} />
+      </div>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_220px]">
+        <label className="relative block">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            className="h-11 w-full rounded-md border bg-background pl-9 pr-3 text-sm"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="搜尋姓名、暱稱、信箱、科室、手機、訪員證號"
+          />
+        </label>
+        <select
+          className="h-11 rounded-md border bg-background px-3 text-sm"
+          value={workerGroup}
+          onChange={(event) => setWorkerGroup(event.target.value as "all" | VisitorRegistrationWorkerGroup)}
+        >
+          <option value="all">全部類別</option>
+          <option value="civil_affairs">民政訪查人員</option>
+          <option value="social_affairs">社政訪查人員</option>
+        </select>
+      </div>
+
+      <div className="mt-4 overflow-x-auto rounded-lg border">
+        <table className="w-full min-w-[960px] border-collapse text-left text-sm">
+          <thead className="bg-secondary text-muted-foreground">
+            <tr>
+              <th className="px-3 py-3 font-medium">姓名 / 暱稱</th>
+              <th className="px-3 py-3 font-medium">類別</th>
+              <th className="px-3 py-3 font-medium">科室職稱</th>
+              <th className="px-3 py-3 font-medium">聯絡方式</th>
+              <th className="px-3 py-3 font-medium">訓練 / 證號</th>
+              <th className="px-3 py-3 font-medium">照片</th>
+              <th className="px-3 py-3 font-medium">審核狀態</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredRequests.map((request) => {
+              const profile = request.visitorRegistrationProfile;
+              return (
+                <tr key={request.id} className="border-t align-top">
+                  <td className="px-3 py-3">
+                    <p className="font-medium">{request.fullName}</p>
+                    <p className="mt-1 max-w-[240px] text-xs text-muted-foreground">
+                      {profile?.displayName ?? request.fullName}
+                    </p>
+                  </td>
+                  <td className="px-3 py-3">
+                    {profile ? workerGroupLabels[profile.workerGroup] : "未分類"}
+                  </td>
+                  <td className="px-3 py-3">
+                    <p>{profile?.departmentName ?? "未填"}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {profile ? normalizedJobTitle(profile) : "未填"}
+                    </p>
+                  </td>
+                  <td className="px-3 py-3">
+                    <p>{profile?.phone ?? "未填手機"}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {profile?.officialEmail ?? request.email}
+                    </p>
+                  </td>
+                  <td className="px-3 py-3">
+                    <p>{profile?.trainingCompleted ? "已完成訓練" : "未完成訓練"}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {profile?.visitorCertificateNo ?? "訪員證待補"}
+                    </p>
+                  </td>
+                  <td className="px-3 py-3">
+                    {profile?.headshotProcessedUrl ? (
+                      <div className="flex items-center gap-2">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={profile.headshotProcessedUrl}
+                          alt={`${request.fullName} 證件照`}
+                          className="h-12 w-9 rounded border object-cover"
+                        />
+                        <span className="text-xs text-primary">有照片</span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">缺照片</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-3">
+                    <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
+                      已通過
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {filteredRequests.length === 0 && (
+          <div className="border-t bg-background p-4 text-sm text-muted-foreground">
+            目前沒有符合條件的已通過訪員。
+          </div>
+        )}
+      </div>
+
+      <p className="mt-3 text-xs leading-5 text-muted-foreground">
+        「完整匯出含照片」會把證件照以資料形式放入 JSON，適合備份或後續批次轉檔；CSV 名冊適合提供行政彙整。
+      </p>
+    </section>
+  );
+}
 
 export function VisitorRegistrationForm({
   workspace,
@@ -784,6 +1079,41 @@ function createLocalHeadshotPreview(dataUrl: string) {
     image.onerror = () => reject(new Error("Image could not be loaded."));
     image.src = dataUrl;
   });
+}
+
+function toCsv(rows: Array<Record<string, string>>) {
+  if (rows.length === 0) return "";
+  const headers = Object.keys(rows[0]);
+  const csvRows = [
+    headers.join(","),
+    ...rows.map((row) => headers.map((header) => escapeCsvValue(row[header] ?? "")).join(",")),
+  ];
+
+  return `\uFEFF${csvRows.join("\n")}`;
+}
+
+function escapeCsvValue(value: string) {
+  if (/[",\n]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+
+  return value;
+}
+
+function downloadTextFile(filename: string, content: string, type: string) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function sanitizeFilename(value: string) {
+  return value.replace(/[\\/:*?"<>|]/g, "_").replace(/\s+/g, "_");
 }
 
 function normalizedJobTitle(request: { jobTitle: string; jobTitleOther: string | null }) {
