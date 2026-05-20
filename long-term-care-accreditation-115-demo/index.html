@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>長照機構評鑑 115｜簡報式講義示範</title>
+    <meta
+      name="description"
+      content="長照機構評鑑 115 的 Codex 簡報式講義示範案例，包含目錄、投影片、Prompt、筆記暫存與匯出。"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="投影片目錄">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">評</span>
+          <div>
+            <p class="eyebrow">示範案例</p>
+            <h1>長照機構評鑑 115</h1>
+          </div>
+        </div>
+        <nav id="slideNav" class="slide-nav"></nav>
+        <div class="side-actions">
+          <a class="quiet-link" href="./source/course-outline.md" download>下載課程大綱</a>
+          <a class="quiet-link" href="./downloads/prompts.md" download>下載 Prompt 包</a>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Codex HTML handout template</p>
+            <h2 id="deckTitle">長照機構評鑑 115｜從文件到現場的準備節奏</h2>
+          </div>
+          <div class="top-actions" aria-label="講義操作">
+            <button id="prevBtn" class="icon-button" type="button" title="上一頁" aria-label="上一頁">‹</button>
+            <button id="nextBtn" class="icon-button" type="button" title="下一頁" aria-label="下一頁">›</button>
+            <button id="fullscreenBtn" class="text-button" type="button">全螢幕</button>
+          </div>
+        </header>
+
+        <section class="stage-wrap" aria-live="polite">
+          <article class="slide-stage">
+            <div class="slide-meta">
+              <span id="slideCounter"></span>
+              <span id="slideType"></span>
+            </div>
+            <div id="slideVisual" class="slide-visual"></div>
+            <div class="slide-copy">
+              <p id="slideKicker" class="eyebrow"></p>
+              <h3 id="slideTitle"></h3>
+              <p id="slideLead"></p>
+              <ul id="slidePoints"></ul>
+            </div>
+          </article>
+        </section>
+
+        <section class="utility-panel" aria-label="講師工具">
+          <div class="tool-card">
+            <div class="tool-card-header">
+              <div>
+                <p class="eyebrow">Page prompt</p>
+                <h4>本頁生成 Prompt</h4>
+              </div>
+              <button id="copyPromptBtn" class="text-button" type="button">複製</button>
+            </div>
+            <pre id="promptText"></pre>
+          </div>
+
+          <div class="tool-card">
+            <div class="tool-card-header">
+              <div>
+                <p class="eyebrow">My notes</p>
+                <h4>講師筆記</h4>
+              </div>
+              <button id="exportNotesBtn" class="text-button" type="button">匯出</button>
+            </div>
+            <textarea id="noteInput" rows="10" placeholder="輸入本頁補充、案例、提醒事項。筆記會自動暫存在這台裝置。"></textarea>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
