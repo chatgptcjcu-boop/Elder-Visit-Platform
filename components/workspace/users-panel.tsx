@@ -495,7 +495,7 @@ function ApprovedVisitorRegistry({ requests }: { requests: UserRegistrationReque
   }
 
   return (
-    <section className="rounded-lg border bg-card p-4">
+    <section className="rounded-lg border bg-card p-3 sm:p-4">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
         <div>
           <h2 className="font-semibold">已通過訪員名冊管理</h2>
@@ -503,34 +503,46 @@ function ApprovedVisitorRegistry({ requests }: { requests: UserRegistrationReque
             審核通過後集中在這裡管理，適合 200 位以上志工用搜尋、篩選與匯出處理，不再用卡片連續排列。
           </p>
         </div>
-        <div className="grid gap-2 sm:grid-cols-3 xl:min-w-[520px]">
-          <Button type="button" variant="outline" onClick={exportRosterCsv} disabled={filteredRequests.length === 0}>
+        <div className="grid w-full gap-2 sm:grid-cols-3 xl:w-auto xl:min-w-[520px]">
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={exportRosterCsv}
+            disabled={filteredRequests.length === 0}
+          >
             <Download className="h-4 w-4" />
             匯出名冊 CSV
           </Button>
           <Button
             type="button"
             variant="outline"
+            className="w-full"
             onClick={exportPhotoManifestCsv}
             disabled={filteredRequests.length === 0}
           >
             <Download className="h-4 w-4" />
             匯出照片索引
           </Button>
-          <Button type="button" onClick={exportFullJson} disabled={filteredRequests.length === 0}>
+          <Button
+            type="button"
+            className="w-full"
+            onClick={exportFullJson}
+            disabled={filteredRequests.length === 0}
+          >
             <Download className="h-4 w-4" />
             完整匯出含照片
           </Button>
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 md:grid-cols-3">
+      <div className="mt-4 grid gap-2 sm:grid-cols-3">
         <ReviewMetric label="目前篩選筆數" value={filteredRequests.length} />
         <ReviewMetric label="已處理照片" value={photoReadyCount} />
         <ReviewMetric label="缺照片" value={Math.max(filteredRequests.length - photoReadyCount, 0)} />
       </div>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_220px]">
+      <div className="mt-4 grid gap-2 lg:grid-cols-[1fr_220px]">
         <label className="relative block">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -551,7 +563,61 @@ function ApprovedVisitorRegistry({ requests }: { requests: UserRegistrationReque
         </select>
       </div>
 
-      <div className="mt-4 overflow-x-auto rounded-lg border">
+      <div className="mt-4 grid gap-3 lg:hidden">
+        {filteredRequests.map((request) => {
+          const profile = request.visitorRegistrationProfile;
+          return (
+            <article key={request.id} className="rounded-lg border bg-background p-3">
+              <div className="flex items-start gap-3">
+                {profile?.headshotProcessedUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={profile.headshotProcessedUrl}
+                    alt={`${request.fullName} 證件照`}
+                    className="h-20 w-[3.75rem] rounded border object-cover"
+                  />
+                ) : (
+                  <div className="flex h-20 w-[3.75rem] items-center justify-center rounded border bg-card text-xs text-muted-foreground">
+                    缺照片
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-semibold">{request.fullName}</h3>
+                    <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
+                      已通過
+                    </span>
+                  </div>
+                  <p className="mt-1 break-words text-xs text-muted-foreground">
+                    {profile?.displayName ?? request.fullName}
+                  </p>
+                  <p className="mt-2 text-sm">
+                    {profile ? workerGroupLabels[profile.workerGroup] : "未分類"} ·{" "}
+                    {profile?.departmentName ?? "未填科室"} ·{" "}
+                    {profile ? normalizedJobTitle(profile) : "未填職稱"}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3 grid gap-2 rounded-md bg-secondary/50 p-3 text-sm sm:grid-cols-2">
+                <p>手機：{profile?.phone ?? "未填"}</p>
+                <p>訪員證：{profile?.visitorCertificateNo ?? "待補"}</p>
+                <p>訓練：{profile?.trainingCompleted ? "已完成" : "未完成"}</p>
+                <p>照片：{profile?.headshotProcessedUrl ? "有照片" : "缺照片"}</p>
+              </div>
+              <p className="mt-2 break-all text-xs text-muted-foreground">
+                {profile?.officialEmail ?? request.email}
+              </p>
+            </article>
+          );
+        })}
+        {filteredRequests.length === 0 && (
+          <div className="rounded-lg border border-dashed bg-background p-4 text-sm text-muted-foreground">
+            目前沒有符合條件的已通過訪員。
+          </div>
+        )}
+      </div>
+
+      <div className="mt-4 hidden overflow-x-auto rounded-lg border lg:block">
         <table className="w-full min-w-[960px] border-collapse text-left text-sm">
           <thead className="bg-secondary text-muted-foreground">
             <tr>
