@@ -166,9 +166,14 @@ export async function submitVisitorRegistration(
   };
 }
 
-export function reviewRegistration(
+export async function reviewRegistration(
   decision: UserRegistrationDecision,
-): UserRegistrationDecisionResult {
+): Promise<UserRegistrationDecisionResult> {
+  const supabaseResult = await reviewSupabaseRegistration(decision);
+  if (supabaseResult) {
+    return supabaseResult;
+  }
+
   const request = registrationRequests.find((item) => item.id === decision.requestId);
 
   if (!request) {
@@ -195,6 +200,154 @@ export function reviewRegistration(
     message: `${request.fullName} 已加入 ${request.requestedWorkspaceName}。`,
     nextStep: `建立 workspace_membership，角色為 ${decision.roleKey}，下次登入依此角色顯示畫面。`,
   };
+}
+
+async function reviewSupabaseRegistration(
+  decision: UserRegistrationDecision,
+): Promise<UserRegistrationDecisionResult | null> {
+  try {
+    const supabase = createAdminClient();
+    const reviewedAt = new Date().toISOString();
+    const status = decision.decision === "approve" ? "approved" : "rejected";
+    const reviewNote =
+      decision.note ||
+      (decision.decision === "approve" ? "承辦管理者已核准加入。" : "承辦管理者已退回申請。");
+
+    const { data, error } = await (supabase as unknown as RegistrationRequestReviewClient)
+      .from("workspace_registration_requests")
+      .update({
+        status,
+        requested_role_key: decision.roleKey,
+        requested_workspace_id: decision.workspaceId,
+        review_note: reviewNote,
+        reviewed_at: reviewedAt,
+        social_bureau_review_status: status,
+        social_bureau_reviewed_at: reviewedAt,
+        social_bureau_review_note: reviewNote,
+      })
+      .eq("id", decision.requestId)
+      .select("*")
+      .single();
+
+    if (error || !data) {
+      return null;
+    }
+
+    if (decision.decision === "approve") {
+      await activateApprovedRegistration(supabase, data, decision);
+    }
+
+    const request = mapRegistrationRow(data);
+    return {
+      requestId: request.id,
+      status: request.status,
+      message:
+        decision.decision === "approve"
+          ? `${request.fullName} 已核准加入 ${request.requestedWorkspaceName}。`
+          : `${request.fullName} 的加入申請已退回。`,
+      nextStep:
+        decision.decision === "approve"
+          ? `已更新 Supabase 審核狀態，並建立 workspace_membership，角色為 ${decision.roleKey}。`
+          : "已更新 Supabase 審核狀態，不建立 Workspace 成員關聯。",
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function activateApprovedRegistration(
+  supabase: unknown,
+  row: WorkspaceRegistrationRequestRow,
+  decision: UserRegistrationDecision,
+) {
+  const workspaceId = row.requested_workspace_id ?? decision.workspaceId;
+  if (!workspaceId) return;
+
+  const { data: account } = await (supabase as AccountWriteClient)
+    .from("accounts")
+    .upsert(
+      {
+        email: row.email,
+        full_name: row.full_name,
+        status: "active",
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "email" },
+    )
+    .select("id")
+    .single();
+
+  if (!account?.id) return;
+
+  await (supabase as RegistrationRequestReviewClient)
+    .from("workspace_registration_requests")
+    .update({ account_id: account.id })
+    .eq("id", row.id);
+
+  await (supabase as WorkspaceMembershipWriteClient)
+    .from("workspace_memberships")
+    .upsert(
+      {
+        workspace_id: workspaceId,
+        account_id: account.id,
+        role_name: decision.roleKey,
+        status: "active",
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "workspace_id,account_id" },
+    );
+
+  if (decision.roleKey === "visitor") {
+    await upsertVisitorProfile(supabase, row, account.id, workspaceId);
+  }
+}
+
+async function upsertVisitorProfile(
+  supabase: unknown,
+  row: WorkspaceRegistrationRequestRow,
+  accountId: string,
+  workspaceId: string,
+) {
+  const { data: existing } = await (supabase as VisitorProfileReviewClient)
+    .from("visitor_profiles")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .eq("account_id", accountId)
+    .limit(1)
+    .maybeSingle();
+
+  const profileRow = {
+    workspace_id: workspaceId,
+    account_id: accountId,
+    full_name: row.full_name,
+    status: "available",
+    worker_type: normalizeWorkerGroup(row.worker_group) === "civil_affairs" ? "civil_affairs" : "social_affairs",
+    visitor_certificate_no: row.visitor_certificate_no,
+    certificate_status: row.visitor_certificate_no ? "valid" : "missing",
+    training_date: row.training_completed_at,
+    root_unit_name: row.root_unit_name,
+    department_name: row.department_name,
+    job_title: row.job_title,
+    display_name: row.display_name ?? row.full_name,
+    gender: normalizeGender(row.gender),
+    national_id: row.national_id,
+    official_email: row.official_email ?? row.email,
+    phone: row.phone,
+    headshot_processed_url: row.headshot_processed_url,
+    social_bureau_review_status: "approved",
+    social_bureau_reviewed_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  if (existing?.id) {
+    await (supabase as VisitorProfileReviewClient)
+      .from("visitor_profiles")
+      .update(profileRow)
+      .eq("id", existing.id);
+    return;
+  }
+
+  await (supabase as VisitorProfileReviewClient).from("visitor_profiles").insert(profileRow);
 }
 
 async function getSupabaseRegistrationRequests(): Promise<UserRegistrationRequest[]> {
@@ -470,6 +623,73 @@ type RegistrationRequestWriteClient = {
         }>;
       };
     };
+  };
+};
+
+type RegistrationRequestReviewClient = {
+  from(table: "workspace_registration_requests"): {
+    update(row: Record<string, unknown>): {
+      eq(column: string, value: string): {
+        select(query: string): {
+          single(): Promise<{
+            data: WorkspaceRegistrationRequestRow | null;
+            error: unknown;
+          }>;
+        };
+      } & PromiseLike<{
+        data: WorkspaceRegistrationRequestRow | null;
+        error: unknown;
+      }>;
+    };
+  };
+};
+
+type AccountWriteClient = {
+  from(table: "accounts"): {
+    upsert(row: Record<string, unknown>, options: { onConflict: string }): {
+      select(query: string): {
+        single(): Promise<{
+          data: { id: string } | null;
+          error: unknown;
+        }>;
+      };
+    };
+  };
+};
+
+type WorkspaceMembershipWriteClient = {
+  from(table: "workspace_memberships"): {
+    upsert(row: Record<string, unknown>, options: { onConflict: string }): Promise<{
+      data: unknown;
+      error: unknown;
+    }>;
+  };
+};
+
+type VisitorProfileReviewClient = {
+  from(table: "visitor_profiles"): {
+    select(query: string): {
+      eq(column: string, value: string): {
+        eq(column: string, value: string): {
+          limit(count: number): {
+            maybeSingle(): Promise<{
+              data: { id: string } | null;
+              error: unknown;
+            }>;
+          };
+        };
+      };
+    };
+    update(row: Record<string, unknown>): {
+      eq(column: string, value: string): Promise<{
+        data: unknown;
+        error: unknown;
+      }>;
+    };
+    insert(row: Record<string, unknown>): Promise<{
+      data: unknown;
+      error: unknown;
+    }>;
   };
 };
 

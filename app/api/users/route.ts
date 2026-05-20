@@ -23,6 +23,6 @@ export async function POST(request: NextRequest) {
   const decision = (await request.json()) as UserRegistrationDecision;
 
   return NextResponse.json({
-    data: reviewRegistration(decision),
+    data: await reviewRegistration(decision),
   });
 }

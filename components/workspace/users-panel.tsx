@@ -34,13 +34,13 @@ export function UsersPanel() {
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
   const [registrationMessage, setRegistrationMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function loadUsers() {
-      const response = await fetch("/api/users");
-      const json = (await response.json()) as { data?: UsersPayload };
-      setPayload(json.data ?? null);
-    }
+  async function loadUsers() {
+    const response = await fetch("/api/users");
+    const json = (await response.json()) as { data?: UsersPayload };
+    setPayload(json.data ?? null);
+  }
 
+  useEffect(() => {
     void loadUsers();
   }, []);
 
@@ -72,6 +72,7 @@ export function UsersPanel() {
     });
     const json = (await response.json()) as { data?: UserRegistrationDecisionResult };
     setResult(json.data ?? null);
+    await loadUsers();
   }
 
   return (
