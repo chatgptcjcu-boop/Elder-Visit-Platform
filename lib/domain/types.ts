@@ -157,8 +157,37 @@ export type UserRegistrationStatus =
   | "draft"
   | "email_verified"
   | "pending_workspace_review"
+  | "pending_supervisor_review"
+  | "pending_social_bureau_review"
   | "approved"
   | "rejected";
+
+export type VisitorRegistrationWorkerGroup = "civil_affairs" | "social_affairs";
+
+export type VisitorRegistrationReviewStatus = "not_sent" | "pending" | "approved" | "rejected";
+
+export type VisitorRegistrationProfile = {
+  rootUnitName: string;
+  departmentName: string;
+  departmentOther: string | null;
+  jobTitle: string;
+  jobTitleOther: string | null;
+  displayName: string;
+  gender: "男" | "女" | "其他";
+  nationalId: string;
+  workerGroup: VisitorRegistrationWorkerGroup;
+  officialEmail: string;
+  phone: string;
+  trainingCompleted: boolean;
+  trainingCompletedAt: string | null;
+  visitorCertificateNo: string | null;
+  headshotOriginalUrl: string | null;
+  headshotProcessedUrl: string | null;
+  socialBureauReviewStatus: VisitorRegistrationReviewStatus;
+  socialBureauReviewedAt: string | null;
+  socialBureauReviewNote: string | null;
+  note: string | null;
+};
 
 export type UserRegistrationRequest = {
   id: string;
@@ -171,6 +200,20 @@ export type UserRegistrationRequest = {
   status: UserRegistrationStatus;
   submittedAt: string;
   reviewNote: string | null;
+  visitorRegistrationProfile?: VisitorRegistrationProfile;
+};
+
+export type VisitorRegistrationSubmission = Omit<
+  VisitorRegistrationProfile,
+  | "displayName"
+  | "socialBureauReviewStatus"
+  | "socialBureauReviewedAt"
+  | "socialBureauReviewNote"
+> & {
+  fullName: string;
+  email: string;
+  requestedWorkspaceId: string | null;
+  requestedWorkspaceName: string;
 };
 
 export type UserRegistrationDecision = {
