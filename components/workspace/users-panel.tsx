@@ -370,6 +370,8 @@ export function VisitorRegistrationForm({
     note: null,
   };
   const [form, setForm] = useState<VisitorRegistrationSubmission>(initialForm);
+  const [headshotProcessing, setHeadshotProcessing] = useState(false);
+  const [headshotMessage, setHeadshotMessage] = useState<string | null>(null);
   const displayName = createVisitorDisplayName(form);
   const canSubmit = Boolean(
     form.fullName.trim() &&
@@ -383,57 +385,49 @@ export function VisitorRegistrationForm({
     setForm((current) => ({ ...current, ...patch }));
   }
 
-  function handlePhoto(file: File | undefined) {
+  async function handlePhoto(file: File | undefined) {
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = typeof reader.result === "string" ? reader.result : null;
-      if (!dataUrl) return;
+    setHeadshotProcessing(true);
+    setHeadshotMessage("正在產生白底一寸證件照...");
 
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
       updateForm({
         headshotOriginalUrl: dataUrl,
         headshotProcessedUrl: dataUrl,
       });
 
-      const image = new Image();
-      image.onload = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = 300;
-        canvas.height = 400;
-        const context = canvas.getContext("2d");
-        if (!context) return;
+      const response = await fetch("/api/users/headshot-process", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ imageDataUrl: dataUrl }),
+      });
+      const json = (await response.json()) as {
+        data?: { processedDataUrl: string; note: string };
+        error?: { message?: string };
+      };
 
-        context.fillStyle = "#ffffff";
-        context.fillRect(0, 0, canvas.width, canvas.height);
-
-        const sourceRatio = image.width / image.height;
-        const targetRatio = canvas.width / canvas.height;
-        const sourceWidth = sourceRatio > targetRatio ? image.height * targetRatio : image.width;
-        const sourceHeight = sourceRatio > targetRatio ? image.height : image.width / targetRatio;
-        const sourceX = (image.width - sourceWidth) / 2;
-        const sourceY = (image.height - sourceHeight) / 2;
-
-        context.drawImage(
-          image,
-          sourceX,
-          sourceY,
-          sourceWidth,
-          sourceHeight,
-          0,
-          0,
-          canvas.width,
-          canvas.height,
-        );
-
+      if (response.ok && json.data?.processedDataUrl) {
         updateForm({
           headshotOriginalUrl: dataUrl,
-          headshotProcessedUrl: canvas.toDataURL("image/jpeg", 0.9),
+          headshotProcessedUrl: json.data.processedDataUrl,
         });
-      };
-      image.src = dataUrl;
-    };
-    reader.readAsDataURL(file);
+        setHeadshotMessage("已完成伺服器端白底一寸證件照處理。");
+        return;
+      }
+
+      const fallbackDataUrl = await createLocalHeadshotPreview(dataUrl);
+      updateForm({
+        headshotOriginalUrl: dataUrl,
+        headshotProcessedUrl: fallbackDataUrl,
+      });
+      setHeadshotMessage(json.error?.message ?? "伺服器處理失敗，已改用本機白底裁切預覽。");
+    } catch {
+      setHeadshotMessage("照片處理失敗，請重新上傳較清楚的自拍照。");
+    } finally {
+      setHeadshotProcessing(false);
+    }
   }
 
   async function submit() {
@@ -660,10 +654,18 @@ export function VisitorRegistrationForm({
               type="file"
               accept="image/*"
               capture="user"
-              onChange={(event) => handlePhoto(event.target.files?.[0])}
+              disabled={headshotProcessing}
+              onChange={(event) => {
+                void handlePhoto(event.target.files?.[0]);
+              }}
             />
+            {headshotMessage && (
+              <p className="mt-2 rounded-md bg-secondary/60 px-3 py-2 text-xs leading-5 text-muted-foreground">
+                {headshotMessage}
+              </p>
+            )}
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
-              目前已完成手機拍照、上傳與白底一寸比例裁切預覽；真正 AI 去背換底尚未接入影像服務。
+              已接入後端白底一寸比例裁切與壓縮。若要真正 AI 去背換底，下一步需設定外部影像 AI 服務金鑰。
             </p>
           </div>
         </div>
@@ -700,6 +702,64 @@ function createVisitorDisplayName(
         : submission.jobTitle;
 
   return `${submission.rootUnitName}${department}-${submission.fullName || "未填姓名"}-${jobTitle}`;
+}
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+        return;
+      }
+
+      reject(new Error("Image file could not be read."));
+    };
+    reader.onerror = () => reject(new Error("Image file could not be read."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function createLocalHeadshotPreview(dataUrl: string) {
+  return new Promise<string>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 300;
+      canvas.height = 400;
+      const context = canvas.getContext("2d");
+      if (!context) {
+        reject(new Error("Canvas is not available."));
+        return;
+      }
+
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+
+      const sourceRatio = image.width / image.height;
+      const targetRatio = canvas.width / canvas.height;
+      const sourceWidth = sourceRatio > targetRatio ? image.height * targetRatio : image.width;
+      const sourceHeight = sourceRatio > targetRatio ? image.height : image.width / targetRatio;
+      const sourceX = (image.width - sourceWidth) / 2;
+      const sourceY = (image.height - sourceHeight) / 2;
+
+      context.drawImage(
+        image,
+        sourceX,
+        sourceY,
+        sourceWidth,
+        sourceHeight,
+        0,
+        0,
+        canvas.width,
+        canvas.height,
+      );
+
+      resolve(canvas.toDataURL("image/jpeg", 0.9));
+    };
+    image.onerror = () => reject(new Error("Image could not be loaded."));
+    image.src = dataUrl;
+  });
 }
 
 function normalizedJobTitle(request: { jobTitle: string; jobTitleOther: string | null }) {

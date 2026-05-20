@@ -8,7 +8,8 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isPublicRoute = publicRoutes.includes(pathname);
   const isAuthApi = pathname.startsWith("/api/auth/");
-  const isPublicRegistrationApi = pathname === "/api/users/visitor-registration";
+  const isPublicRegistrationApi =
+    pathname === "/api/users/visitor-registration" || pathname === "/api/users/headshot-process";
   const isAsset = pathname.startsWith("/_next/") || pathname.startsWith("/favicon");
 
   if (isPublicRoute || isAuthApi || isPublicRegistrationApi || isAsset) {
