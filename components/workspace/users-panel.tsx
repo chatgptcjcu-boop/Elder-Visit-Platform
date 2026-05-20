@@ -280,7 +280,7 @@ const reviewStatusLabels: Record<string, string> = {
   rejected: "不通過",
 };
 
-function VisitorRegistrationForm({
+export function VisitorRegistrationForm({
   workspace,
   onSubmitted,
 }: {

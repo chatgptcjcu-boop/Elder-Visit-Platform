@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   ArrowRight,
   Building2,
@@ -143,6 +144,19 @@ export function LoginPanel() {
                 登入系統
               </Button>
 
+              <div className="rounded-lg border bg-primary/5 p-3">
+                <p className="text-sm font-semibold text-primary">新訪員還沒有帳號？</p>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  先填寫註冊資料、自拍證件照與教育訓練資訊，送出後由承辦管理者審核。
+                </p>
+                <Button asChild variant="outline" className="mt-3 h-10 w-full bg-card">
+                  <Link href="/register">
+                    <UserPlusIcon />
+                    前往新訪員註冊
+                  </Link>
+                </Button>
+              </div>
+
               {message && (
                 <p className="rounded-md bg-secondary p-3 text-sm text-muted-foreground">
                   {message}
@@ -217,6 +231,10 @@ export function LoginPanel() {
       </div>
     </main>
   );
+}
+
+function UserPlusIcon() {
+  return <UsersRound className="h-4 w-4" />;
 }
 
 function FeatureCard({
