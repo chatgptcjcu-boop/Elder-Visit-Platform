@@ -82,6 +82,11 @@ export function UsersPanel() {
   const needsRemittanceCount = approvedRequests.filter((request) =>
     matchesVisitorRegistryView(request, "needs_remittance"),
   ).length;
+  const needsCompletionCount = approvedRequests.filter(
+    (request) =>
+      matchesVisitorRegistryView(request, "needs_profile") ||
+      matchesVisitorRegistryView(request, "needs_remittance"),
+  ).length;
   const assignableCount = approvedRequests.filter((request) =>
     matchesVisitorRegistryView(request, "assignable"),
   ).length;
@@ -189,6 +194,7 @@ export function UsersPanel() {
             <div className="grid gap-2 rounded-lg border bg-background p-3 text-sm">
               <StatusRow label="工作空間" value={payload.workspace.name} />
               <StatusRow label="註冊總量" value={`${payload.registrationRequests.length} 筆`} />
+              <StatusRow label="已通過" value={`${approvedRequests.length} 筆`} />
               <StatusRow label="可派案訪員" value={`${assignableCount} 位`} />
               <StatusRow label="已退回" value={`${rejectedRequests.length} 筆`} />
               <StatusRow label="證件照" value={`${approvedPhotoCount}/${approvedRequests.length} 份`} />
@@ -215,8 +221,8 @@ export function UsersPanel() {
             <UserDashboardMetric
               icon={IdCard}
               label="待補/待確認"
-              value={needsProfileCount + needsRemittanceCount}
-              detail="個人資料或匯款資料尚未完成"
+              value={needsCompletionCount}
+              detail={`個資待確認 ${needsProfileCount}，匯款待確認 ${needsRemittanceCount}`}
             />
             <UserDashboardMetric
               icon={CheckCircle2}
@@ -251,7 +257,7 @@ export function UsersPanel() {
               />
               <UserActionCard
                 title="追補資料與匯款"
-                detail={`${needsProfileCount + needsRemittanceCount} 筆資料仍需確認或補件。`}
+                detail={`${needsCompletionCount} 位訪員仍需確認或補件；同一人不重複計算。`}
                 href="#approved-visitors"
                 icon={IdCard}
               />
