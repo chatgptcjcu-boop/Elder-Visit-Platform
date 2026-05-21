@@ -3,8 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {
+  ArrowRight,
   Camera,
   CheckCircle2,
+  ClipboardCheck,
+  Clock3,
   Download,
   IdCard,
   Mail,
@@ -17,6 +20,7 @@ import {
   Volume2,
   XCircle,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useCan } from "@/components/auth/permission-provider";
 import { Button } from "@/components/ui/button";
 import { workspaceRoles } from "@/lib/domain/permissions";
@@ -66,6 +70,21 @@ export function UsersPanel() {
     () => payload?.registrationRequests.filter((request) => request.status === "rejected") ?? [],
     [payload?.registrationRequests],
   );
+  const approvedPhotoCount = approvedRequests.filter(
+    (request) => request.visitorRegistrationProfile?.headshotProcessedUrl,
+  ).length;
+  const needsInviteCount = approvedRequests.filter((request) =>
+    matchesVisitorRegistryView(request, "needs_invite"),
+  ).length;
+  const needsProfileCount = approvedRequests.filter((request) =>
+    matchesVisitorRegistryView(request, "needs_profile"),
+  ).length;
+  const needsRemittanceCount = approvedRequests.filter((request) =>
+    matchesVisitorRegistryView(request, "needs_remittance"),
+  ).length;
+  const assignableCount = approvedRequests.filter((request) =>
+    matchesVisitorRegistryView(request, "assignable"),
+  ).length;
 
   async function loadUsers() {
     const response = await fetch(`/api/users?ts=${Date.now()}`, { cache: "no-store" });
@@ -154,71 +173,98 @@ export function UsersPanel() {
 
   return (
     <div className="grid gap-4">
-      <section className="rounded-lg border bg-card p-4">
-        <div className="flex items-center gap-2">
-          <UserPlus className="h-5 w-5 text-primary" />
-          <h1 className="text-2xl font-semibold">使用者管理與註冊審核</h1>
+      <section className="rounded-lg border bg-card p-4 sm:p-5">
+        <div className="grid gap-4 lg:grid-cols-[1fr_20rem] lg:items-start">
+          <div>
+            <div className="flex items-center gap-2 text-primary">
+              <UserPlus className="h-5 w-5" />
+              <p className="text-sm font-semibold">使用者管理工作台</p>
+            </div>
+            <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">註冊審核與訪員名冊</h1>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+              先看待審、待邀請、待補資料與可派案人數，再進入批次處理；註冊流程說明移到頁面底部索引。
+            </p>
+          </div>
+          {payload && (
+            <div className="grid gap-2 rounded-lg border bg-background p-3 text-sm">
+              <StatusRow label="工作空間" value={payload.workspace.name} />
+              <StatusRow label="註冊總量" value={`${payload.registrationRequests.length} 筆`} />
+              <StatusRow label="可派案訪員" value={`${assignableCount} 位`} />
+              <StatusRow label="已退回" value={`${rejectedRequests.length} 筆`} />
+              <StatusRow label="證件照" value={`${approvedPhotoCount}/${approvedRequests.length} 份`} />
+            </div>
+          )}
         </div>
-        <p className="mt-2 text-sm text-muted-foreground">
-          使用者註冊後必須關聯 Unit 與 Workspace，審核通過才會取得角色與權限。
-        </p>
       </section>
 
       {payload && (
         <>
-          <section className="rounded-lg border bg-card p-4">
-            <h2 className="font-semibold">啟動流程</h2>
-            <div className="mt-4 grid gap-2 md:grid-cols-5">
-              {payload.flow.map((step, index) => (
-                <div key={step} className="rounded-md border bg-background p-3 text-sm">
-                  <p className="text-xs font-semibold text-primary">步驟 {index + 1}</p>
-                  <p className="mt-2 text-muted-foreground">{step}</p>
-                </div>
-              ))}
-            </div>
+          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <UserDashboardMetric
+              icon={Clock3}
+              label="待審核"
+              value={pendingRequests.length}
+              detail="新註冊或尚未通過的申請"
+            />
+            <UserDashboardMetric
+              icon={Mail}
+              label="待發邀請"
+              value={needsInviteCount}
+              detail="已通過但尚未發登入邀請"
+            />
+            <UserDashboardMetric
+              icon={IdCard}
+              label="待補/待確認"
+              value={needsProfileCount + needsRemittanceCount}
+              detail="個人資料或匯款資料尚未完成"
+            />
+            <UserDashboardMetric
+              icon={CheckCircle2}
+              label="已可派案"
+              value={assignableCount}
+              detail="資料與匯款確認完成"
+            />
           </section>
 
-          <VisitorRegistrationForm
-            workspace={payload.workspace}
-            onSubmitted={(request, message) => {
-              setPayload({
-                ...payload,
-                registrationRequests: [request, ...payload.registrationRequests],
-              });
-              setRegistrationMessage(message);
-            }}
-          />
-
-          {registrationMessage && (
-            <section className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-              <p className="font-semibold text-primary">{registrationMessage}</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                這筆資料會進入下方審核清單，通過後再轉成訪員資格檔與派案可用人員。
-              </p>
-            </section>
-          )}
-
           <section className="rounded-lg border bg-card p-4">
-            <h2 className="font-semibold">訪員註冊審核</h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              依公所清冊欄位檢查民政/社政身分、職稱、公務信箱、教育訓練與社會局覆核狀態。
-            </p>
-            <div className="mt-4 grid gap-3 md:grid-cols-4">
-              <ReviewMetric label="待審核" value={pendingRequests.length} />
-              <ReviewMetric label="已通過名冊" value={approvedRequests.length} />
-              <ReviewMetric label="已退回" value={rejectedRequests.length} />
-              <ReviewMetric
-                label="有證件照"
-                value={
-                  approvedRequests.filter(
-                    (request) => request.visitorRegistrationProfile?.headshotProcessedUrl,
-                  ).length
-                }
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-base font-semibold">今日建議處理順序</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  依大量志工管理流程，先清審核，再發邀請，最後確認補件與匯款。
+                </p>
+              </div>
+              <span className="w-fit rounded-md bg-secondary px-2.5 py-1 text-xs font-medium">今日</span>
+            </div>
+            <div className="mt-4 grid gap-3 lg:grid-cols-4">
+              <UserActionCard
+                title="先處理待審核"
+                detail={`${pendingRequests.length} 筆申請待承辦管理者確認。`}
+                href="#pending-requests"
+                icon={ClipboardCheck}
+              />
+              <UserActionCard
+                title="再發登入邀請"
+                detail={`${needsInviteCount} 位已通過訪員尚未收到登入邀請。`}
+                href="#approved-visitors"
+                icon={Mail}
+              />
+              <UserActionCard
+                title="追補資料與匯款"
+                detail={`${needsProfileCount + needsRemittanceCount} 筆資料仍需確認或補件。`}
+                href="#approved-visitors"
+                icon={IdCard}
+              />
+              <UserActionCard
+                title="確認可派案名冊"
+                detail={`${assignableCount} 位訪員可納入派案與核銷流程。`}
+                href="#approved-visitors"
+                icon={CheckCircle2}
               />
             </div>
           </section>
 
-          <section className="rounded-lg border bg-card p-4">
+          <section id="pending-requests" className="rounded-lg border bg-card p-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h2 className="font-semibold">待審核申請</h2>
@@ -362,6 +408,39 @@ export function UsersPanel() {
             }}
           />
 
+          <section className="rounded-lg border bg-card p-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="font-semibold">新增訪員註冊資料</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  少量補登或現場測試時使用；大量名冊仍建議走匯入與批次管理。
+                </p>
+              </div>
+              <span className="w-fit rounded-full bg-secondary px-3 py-1 text-sm font-medium">補登入口</span>
+            </div>
+            <div className="mt-4">
+              <VisitorRegistrationForm
+                workspace={payload.workspace}
+                onSubmitted={(request, message) => {
+                  setPayload({
+                    ...payload,
+                    registrationRequests: [request, ...payload.registrationRequests],
+                  });
+                  setRegistrationMessage(message);
+                }}
+              />
+            </div>
+          </section>
+
+          {registrationMessage && (
+            <section className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+              <p className="font-semibold text-primary">{registrationMessage}</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                這筆資料會進入審核清單，通過後再轉成訪員資格檔與派案可用人員。
+              </p>
+            </section>
+          )}
+
           <VisitorQualificationManager
             profiles={visitorProfiles}
             onChange={setVisitorProfiles}
@@ -385,6 +464,28 @@ export function UsersPanel() {
               );
             }}
           />
+
+          <section className="rounded-lg border bg-card p-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="font-semibold">註冊流程索引</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  這裡保留流程介紹，供訓練或交接時查閱；日常操作以頁面上方儀表板為主。
+                </p>
+              </div>
+              <span className="w-fit rounded-full bg-secondary px-3 py-1 text-sm font-medium">
+                {payload.flow.length} 個步驟
+              </span>
+            </div>
+            <div className="mt-4 grid gap-2 md:grid-cols-5">
+              {payload.flow.map((step, index) => (
+                <div key={step} className="rounded-md border bg-background p-3 text-sm">
+                  <p className="text-xs font-semibold text-primary">步驟 {index + 1}</p>
+                  <p className="mt-2 leading-6 text-muted-foreground">{step}</p>
+                </div>
+              ))}
+            </div>
+          </section>
         </>
       )}
 
@@ -479,6 +580,72 @@ function ReviewMetric({ label, value }: { label: string; value: number }) {
     <div className="rounded-md border bg-background p-3">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 text-2xl font-semibold text-foreground">{value}</p>
+    </div>
+  );
+}
+
+function UserDashboardMetric({
+  icon: Icon,
+  label,
+  value,
+  detail,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: number;
+  detail: string;
+}) {
+  return (
+    <article className="rounded-lg border bg-card p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm text-muted-foreground">{label}</p>
+          <p className="mt-2 text-3xl font-semibold tracking-normal">{value}</p>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">{detail}</p>
+        </div>
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+          <Icon className="h-5 w-5" />
+        </span>
+      </div>
+    </article>
+  );
+}
+
+function UserActionCard({
+  title,
+  detail,
+  href,
+  icon: Icon,
+}: {
+  title: string;
+  detail: string;
+  href: string;
+  icon: LucideIcon;
+}) {
+  return (
+    <article className="rounded-lg border bg-background p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="font-semibold">{title}</h3>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">{detail}</p>
+        </div>
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+          <Icon className="h-5 w-5" />
+        </span>
+      </div>
+      <a href={href} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-primary">
+        前往處理
+        <ArrowRight className="h-4 w-4" />
+      </a>
+    </article>
+  );
+}
+
+function StatusRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-b pb-2 last:border-b-0 last:pb-0">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="text-right font-medium">{value}</span>
     </div>
   );
 }
@@ -783,7 +950,7 @@ function ApprovedVisitorRegistry({
   }
 
   return (
-    <section className="rounded-lg border bg-card p-3 sm:p-4">
+    <section id="approved-visitors" className="rounded-lg border bg-card p-3 sm:p-4">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
         <div>
           <h2 className="font-semibold">已通過訪員名冊管理</h2>
