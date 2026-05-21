@@ -44,3 +44,11 @@
 - **Rule:** Track `auth_invite_status`, `profile_completion_status`, `visitor_code`, and `is_assignable` separately so administrators can see where each visitor is blocked.
 - **Evidence:** `docs/visitor-login-profile-completion-plan.md` and `supabase/migrations/0027_visitor_identity_profile_completion.sql`.
 - **Added on:** 2026-05-21
+
+## Lesson: Large visitor rosters need scoped batch actions
+
+- **Trigger:** A workflow expected to handle 200+ volunteers could not rely on a single long approved-user list.
+- **Cause:** Without state tabs and explicit batch scope, administrators must manually infer which users need invitations, profile checks, remittance review, or export.
+- **Rule:** Large operational rosters should expose state-based tabs, visible selection counts, and clear rules for whether batch actions apply to selected rows or the current filtered view.
+- **Evidence:** `components/workspace/users-panel.tsx` and `docs/tasks/2026-05-21-bulk-visitor-management.md`.
+- **Added on:** 2026-05-21

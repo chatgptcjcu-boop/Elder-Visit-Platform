@@ -41,6 +41,8 @@ type UsersPayload = {
   flow: string[];
 };
 
+type VisitorRegistryView = "all" | "needs_invite" | "needs_profile" | "needs_remittance" | "assignable";
+
 export function UsersPanel() {
   const canReviewUsers = useCan("users.review");
   const [payload, setPayload] = useState<UsersPayload | null>(null);
@@ -464,6 +466,14 @@ const remittanceStatusLabels: Record<string, string> = {
   rejected: "退回補件",
 };
 
+const visitorRegistryViewLabels: Record<VisitorRegistryView, string> = {
+  all: "全部",
+  needs_invite: "待發邀請",
+  needs_profile: "待補/待確認",
+  needs_remittance: "待匯款確認",
+  assignable: "已可派案",
+};
+
 function ReviewMetric({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-md border bg-background p-3">
@@ -484,10 +494,13 @@ function ApprovedVisitorRegistry({
 }) {
   const [query, setQuery] = useState("");
   const [workerGroup, setWorkerGroup] = useState<"all" | VisitorRegistrationWorkerGroup>("all");
+  const [activeView, setActiveView] = useState<VisitorRegistryView>("all");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [invitingRequestId, setInvitingRequestId] = useState<string | null>(null);
   const [verifyingRequestId, setVerifyingRequestId] = useState<string | null>(null);
+  const [batchAction, setBatchAction] = useState<"invite" | "verify" | null>(null);
   const [inviteMessage, setInviteMessage] = useState<string | null>(null);
-  const filteredRequests = useMemo(() => {
+  const baseFilteredRequests = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
     return requests.filter((request) => {
@@ -512,6 +525,28 @@ function ApprovedVisitorRegistry({
       return matchesGroup && (!normalizedQuery || searchText.includes(normalizedQuery));
     });
   }, [query, requests, workerGroup]);
+  const viewCounts = useMemo(
+    () =>
+      Object.fromEntries(
+        (Object.keys(visitorRegistryViewLabels) as VisitorRegistryView[]).map((view) => [
+          view,
+          baseFilteredRequests.filter((request) => matchesVisitorRegistryView(request, view)).length,
+        ]),
+      ) as Record<VisitorRegistryView, number>,
+    [baseFilteredRequests],
+  );
+  const filteredRequests = useMemo(
+    () => baseFilteredRequests.filter((request) => matchesVisitorRegistryView(request, activeView)),
+    [activeView, baseFilteredRequests],
+  );
+  const selectedRequests = useMemo(
+    () => filteredRequests.filter((request) => selectedIds.includes(request.id)),
+    [filteredRequests, selectedIds],
+  );
+  const exportRequests = selectedRequests.length > 0 ? selectedRequests : filteredRequests;
+  const visibleRequestIds = useMemo(() => filteredRequests.map((request) => request.id), [filteredRequests]);
+  const allVisibleSelected =
+    visibleRequestIds.length > 0 && visibleRequestIds.every((requestId) => selectedIds.includes(requestId));
   const photoReadyCount = filteredRequests.filter(
     (request) => request.visitorRegistrationProfile?.headshotProcessedUrl,
   ).length;
@@ -525,28 +560,35 @@ function ApprovedVisitorRegistry({
     (request) => request.visitorRegistrationProfile?.remittanceReady,
   ).length;
 
+  useEffect(() => {
+    setSelectedIds((current) => current.filter((requestId) => visibleRequestIds.includes(requestId)));
+  }, [visibleRequestIds]);
+
+  function toggleSelected(requestId: string) {
+    setSelectedIds((current) =>
+      current.includes(requestId)
+        ? current.filter((selectedId) => selectedId !== requestId)
+        : [...current, requestId],
+    );
+  }
+
+  function toggleAllVisible() {
+    setSelectedIds((current) => {
+      if (allVisibleSelected) {
+        return current.filter((requestId) => !visibleRequestIds.includes(requestId));
+      }
+
+      return Array.from(new Set([...current, ...visibleRequestIds]));
+    });
+  }
+
   async function inviteVisitor(request: UserRegistrationRequest) {
     setInvitingRequestId(request.id);
     setInviteMessage(null);
 
     try {
-      const response = await fetch("/api/users/invite-approved-visitor", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ requestId: request.id }),
-      });
-      const json = (await response.json()) as {
-        data?: VisitorInvitationResult;
-        error?: { message?: string };
-      };
-
-      if (!response.ok || !json.data) {
-        setInviteMessage(json.error?.message ?? "登入邀請沒有完成，請稍後再試。");
-        return;
-      }
-
-      onInvited(json.data);
-      setInviteMessage(`${json.data.message} ${json.data.nextStep}`);
+      const result = await sendVisitorInvite(request);
+      setInviteMessage(result);
     } finally {
       setInvitingRequestId(null);
     }
@@ -557,30 +599,110 @@ function ApprovedVisitorRegistry({
     setInviteMessage(null);
 
     try {
-      const response = await fetch("/api/users/verify-visitor-profile", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ requestId: request.id }),
-      });
-      const json = (await response.json()) as {
-        data?: { message?: string; nextStep?: string };
-        error?: { message?: string };
-      };
-
-      if (!response.ok || !json.data) {
-        setInviteMessage(json.error?.message ?? "確認可派案沒有完成，請稍後再試。");
-        return;
-      }
-
-      onVerified(request.id);
-      setInviteMessage(`${json.data.message ?? "訪員資料已確認。"} ${json.data.nextStep ?? ""}`);
+      const result = await confirmVisitorProfile(request);
+      setInviteMessage(result);
     } finally {
       setVerifyingRequestId(null);
     }
   }
 
+  async function sendVisitorInvite(request: UserRegistrationRequest) {
+    const response = await fetch("/api/users/invite-approved-visitor", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ requestId: request.id }),
+    });
+    const json = (await response.json()) as {
+      data?: VisitorInvitationResult;
+      error?: { message?: string };
+    };
+
+    if (!response.ok || !json.data) {
+      return json.error?.message ?? "登入邀請沒有完成，請稍後再試。";
+    }
+
+    onInvited(json.data);
+    return `${json.data.message} ${json.data.nextStep}`;
+  }
+
+  async function confirmVisitorProfile(request: UserRegistrationRequest) {
+    const response = await fetch("/api/users/verify-visitor-profile", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ requestId: request.id }),
+      });
+    const json = (await response.json()) as {
+      data?: { message?: string; nextStep?: string };
+      error?: { message?: string };
+    };
+
+    if (!response.ok || !json.data) {
+      return json.error?.message ?? "確認可派案沒有完成，請稍後再試。";
+    }
+
+    onVerified(request.id);
+    return `${json.data.message ?? "訪員資料已確認。"} ${json.data.nextStep ?? ""}`;
+  }
+
+  async function batchInviteVisitors() {
+    const targets = (selectedRequests.length > 0 ? selectedRequests : filteredRequests).filter((request) => {
+      const status = request.visitorRegistrationProfile?.authInviteStatus ?? "not_sent";
+      return status !== "sent" && status !== "activated";
+    });
+
+    if (targets.length === 0) {
+      setInviteMessage("目前範圍內沒有需要發送登入邀請的訪員。");
+      return;
+    }
+
+    setBatchAction("invite");
+    setInviteMessage(null);
+    let successCount = 0;
+
+    try {
+      for (const request of targets) {
+        const message = await sendVisitorInvite(request);
+        if (!message.includes("失敗") && !message.includes("沒有完成")) {
+          successCount += 1;
+        }
+      }
+      setSelectedIds([]);
+      setInviteMessage(`已批次送出 ${successCount}/${targets.length} 筆登入邀請。`);
+    } finally {
+      setBatchAction(null);
+    }
+  }
+
+  async function batchVerifyVisitors() {
+    const targets = (selectedRequests.length > 0 ? selectedRequests : filteredRequests).filter(
+      (request) => request.visitorRegistrationProfile?.profileCompletionStatus !== "verified",
+    );
+
+    if (targets.length === 0) {
+      setInviteMessage("目前範圍內沒有需要確認可派案的訪員。");
+      return;
+    }
+
+    setBatchAction("verify");
+    setInviteMessage(null);
+    let successCount = 0;
+
+    try {
+      for (const request of targets) {
+        const message = await confirmVisitorProfile(request);
+        if (!message.includes("失敗") && !message.includes("沒有完成")) {
+          successCount += 1;
+        }
+      }
+      setSelectedIds([]);
+      setInviteMessage(`已批次確認 ${successCount}/${targets.length} 筆訪員資料。`);
+    } finally {
+      setBatchAction(null);
+    }
+  }
+
   function exportRosterCsv() {
-    const rows = filteredRequests.map((request, index) => {
+    const rows = exportRequests.map((request, index) => {
       const profile = request.visitorRegistrationProfile;
       return {
         序號: String(index + 1),
@@ -615,11 +737,15 @@ function ApprovedVisitorRegistry({
       };
     });
 
-    downloadTextFile("已通過訪員名冊.csv", toCsv(rows), "text/csv;charset=utf-8");
+    downloadTextFile(
+      selectedRequests.length > 0 ? "已勾選訪員名冊.csv" : "已通過訪員名冊.csv",
+      toCsv(rows),
+      "text/csv;charset=utf-8",
+    );
   }
 
   function exportPhotoManifestCsv() {
-    const rows = filteredRequests.map((request, index) => {
+    const rows = exportRequests.map((request, index) => {
       const profile = request.visitorRegistrationProfile;
       const displayName = profile?.displayName ?? request.fullName;
       return {
@@ -630,11 +756,15 @@ function ApprovedVisitorRegistry({
       };
     });
 
-    downloadTextFile("已通過訪員照片索引.csv", toCsv(rows), "text/csv;charset=utf-8");
+    downloadTextFile(
+      selectedRequests.length > 0 ? "已勾選訪員照片索引.csv" : "已通過訪員照片索引.csv",
+      toCsv(rows),
+      "text/csv;charset=utf-8",
+    );
   }
 
   function exportFullJson() {
-    const rows = filteredRequests.map((request, index) => ({
+    const rows = exportRequests.map((request, index) => ({
       index: index + 1,
       id: request.id,
       email: request.email,
@@ -646,7 +776,7 @@ function ApprovedVisitorRegistry({
     }));
 
     downloadTextFile(
-      "已通過訪員完整資料含照片.json",
+      selectedRequests.length > 0 ? "已勾選訪員完整資料含照片.json" : "已通過訪員完整資料含照片.json",
       JSON.stringify(rows, null, 2),
       "application/json;charset=utf-8",
     );
@@ -667,17 +797,17 @@ function ApprovedVisitorRegistry({
             variant="outline"
             className="w-full"
             onClick={exportRosterCsv}
-            disabled={filteredRequests.length === 0}
+            disabled={exportRequests.length === 0}
           >
             <Download className="h-4 w-4" />
-            匯出名冊 CSV
+            {selectedRequests.length > 0 ? "匯出勾選名冊" : "匯出名冊 CSV"}
           </Button>
           <Button
             type="button"
             variant="outline"
             className="w-full"
             onClick={exportPhotoManifestCsv}
-            disabled={filteredRequests.length === 0}
+            disabled={exportRequests.length === 0}
           >
             <Download className="h-4 w-4" />
             匯出照片索引
@@ -686,7 +816,7 @@ function ApprovedVisitorRegistry({
             type="button"
             className="w-full"
             onClick={exportFullJson}
-            disabled={filteredRequests.length === 0}
+            disabled={exportRequests.length === 0}
           >
             <Download className="h-4 w-4" />
             完整匯出含照片
@@ -700,6 +830,48 @@ function ApprovedVisitorRegistry({
         <ReviewMetric label="已發送邀請" value={inviteSentCount} />
         <ReviewMetric label="匯款可用" value={remittanceReadyCount} />
         <ReviewMetric label="可派案" value={verifiedCount} />
+      </div>
+
+      <div className="mt-4 grid gap-2 md:grid-cols-5">
+        {(Object.keys(visitorRegistryViewLabels) as VisitorRegistryView[]).map((view) => (
+          <button
+            key={view}
+            type="button"
+            className={`rounded-md border px-3 py-3 text-left text-sm transition ${
+              activeView === view
+                ? "border-primary bg-primary/10 text-primary"
+                : "bg-background text-muted-foreground hover:border-primary/40"
+            }`}
+            onClick={() => setActiveView(view)}
+          >
+            <span className="block font-semibold">{visitorRegistryViewLabels[view]}</span>
+            <span className="mt-1 block text-xs">{viewCounts[view]} 筆</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-4 rounded-lg border bg-background p-3">
+        <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div>
+            <p className="text-sm font-semibold">批次作業</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              已勾選 {selectedRequests.length} 筆；若未勾選，批次按鈕會套用目前分頁與搜尋結果。
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <Button type="button" variant="outline" onClick={toggleAllVisible} disabled={filteredRequests.length === 0}>
+              {allVisibleSelected ? "取消本頁勾選" : "勾選目前清單"}
+            </Button>
+            <Button type="button" variant="outline" onClick={batchInviteVisitors} disabled={batchAction !== null}>
+              <Mail className="h-4 w-4" />
+              {batchAction === "invite" ? "發送中" : "批次發送邀請"}
+            </Button>
+            <Button type="button" onClick={batchVerifyVisitors} disabled={batchAction !== null}>
+              <CheckCircle2 className="h-4 w-4" />
+              {batchAction === "verify" ? "確認中" : "批次確認可派案"}
+            </Button>
+          </div>
+        </div>
       </div>
 
       {inviteMessage && (
@@ -732,8 +904,21 @@ function ApprovedVisitorRegistry({
       <div className="mt-4 grid gap-3 lg:hidden">
         {filteredRequests.map((request) => {
           const profile = request.visitorRegistrationProfile;
+          const selected = selectedIds.includes(request.id);
           return (
-            <article key={request.id} className="rounded-lg border bg-background p-3">
+            <article
+              key={request.id}
+              className={`rounded-lg border bg-background p-3 ${selected ? "border-primary bg-primary/5" : ""}`}
+            >
+              <label className="mb-3 flex items-center gap-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={selected}
+                  onChange={() => toggleSelected(request.id)}
+                />
+                勾選批次處理
+              </label>
               <div className="flex items-start gap-3">
                 {profile?.headshotProcessedUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -827,6 +1012,15 @@ function ApprovedVisitorRegistry({
         <table className="w-full min-w-[1120px] border-collapse text-left text-sm">
           <thead className="bg-secondary text-muted-foreground">
             <tr>
+              <th className="w-12 px-3 py-3 font-medium">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={allVisibleSelected}
+                  onChange={toggleAllVisible}
+                  aria-label="勾選目前清單"
+                />
+              </th>
               <th className="px-3 py-3 font-medium">姓名 / 暱稱</th>
               <th className="px-3 py-3 font-medium">類別</th>
               <th className="px-3 py-3 font-medium">科室職稱</th>
@@ -840,8 +1034,18 @@ function ApprovedVisitorRegistry({
           <tbody>
             {filteredRequests.map((request) => {
               const profile = request.visitorRegistrationProfile;
+              const selected = selectedIds.includes(request.id);
               return (
-                <tr key={request.id} className="border-t align-top">
+                <tr key={request.id} className={`border-t align-top ${selected ? "bg-primary/5" : ""}`}>
+                  <td className="px-3 py-3">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={selected}
+                      onChange={() => toggleSelected(request.id)}
+                      aria-label={`勾選 ${request.fullName}`}
+                    />
+                  </td>
                   <td className="px-3 py-3">
                     <p className="font-medium">{request.fullName}</p>
                     <p className="mt-1 max-w-[240px] text-xs text-muted-foreground">
@@ -943,6 +1147,27 @@ function ApprovedVisitorRegistry({
       </p>
     </section>
   );
+}
+
+function matchesVisitorRegistryView(request: UserRegistrationRequest, view: VisitorRegistryView) {
+  const profile = request.visitorRegistrationProfile;
+
+  if (view === "all") return true;
+  if (view === "needs_invite") {
+    const inviteStatus = profile?.authInviteStatus ?? "not_sent";
+    return inviteStatus !== "sent" && inviteStatus !== "activated";
+  }
+  if (view === "needs_profile") {
+    return profile?.profileCompletionStatus !== "verified";
+  }
+  if (view === "needs_remittance") {
+    return !profile?.remittanceReady || profile.remittanceReviewStatus !== "approved";
+  }
+  if (view === "assignable") {
+    return profile?.profileCompletionStatus === "verified" && Boolean(profile.remittanceReady);
+  }
+
+  return true;
 }
 
 export function VisitorRegistrationForm({
