@@ -352,6 +352,7 @@ export function UsersPanel() {
 
           {activeTab === "approved" && (
           <ApprovedVisitorRegistry
+            mode="approved"
             requests={approvedRequests}
             onInvited={handleVisitorInvited}
             onVerified={handleVisitorVerified}
@@ -360,6 +361,7 @@ export function UsersPanel() {
 
           {activeTab === "supplement" && (
             <ApprovedVisitorRegistry
+              mode="supplement"
               requests={approvedRequests.filter(
                 (request) =>
                   matchesVisitorRegistryView(request, "needs_profile") ||
@@ -554,9 +556,9 @@ const userManagementTabLabels: Record<UserManagementTab, string> = {
 
 function ReviewMetric({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-md border bg-background p-3">
+    <div className="rounded-md border bg-background p-2.5">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-foreground">{value}</p>
+      <p className="mt-1 text-xl font-semibold text-foreground">{value}</p>
     </div>
   );
 }
@@ -820,10 +822,12 @@ function StatusTile({ label, value }: { label: string; value: string }) {
 }
 
 function ApprovedVisitorRegistry({
+  mode,
   requests,
   onInvited,
   onVerified,
 }: {
+  mode: "approved" | "supplement";
   requests: UserRegistrationRequest[];
   onInvited: (result: VisitorInvitationResult) => void;
   onVerified: (requestId: string) => void;
@@ -872,8 +876,11 @@ function ApprovedVisitorRegistry({
     [baseFilteredRequests],
   );
   const filteredRequests = useMemo(
-    () => baseFilteredRequests.filter((request) => matchesVisitorRegistryView(request, activeView)),
-    [activeView, baseFilteredRequests],
+    () =>
+      mode === "supplement"
+        ? baseFilteredRequests
+        : baseFilteredRequests.filter((request) => matchesVisitorRegistryView(request, activeView)),
+    [activeView, baseFilteredRequests, mode],
   );
   const selectedRequests = useMemo(
     () => filteredRequests.filter((request) => selectedIds.includes(request.id)),
@@ -894,6 +901,20 @@ function ApprovedVisitorRegistry({
   ).length;
   const remittanceReadyCount = filteredRequests.filter(
     (request) => request.visitorRegistrationProfile?.remittanceReady,
+  ).length;
+  const missingProfileCount = filteredRequests.filter(
+    (request) => request.visitorRegistrationProfile?.profileCompletionStatus !== "verified",
+  ).length;
+  const missingRemittanceCount = filteredRequests.filter(
+    (request) =>
+      !request.visitorRegistrationProfile?.remittanceReady ||
+      request.visitorRegistrationProfile.remittanceReviewStatus !== "approved",
+  ).length;
+  const missingPassbookCount = filteredRequests.filter(
+    (request) => !request.visitorRegistrationProfile?.passbookCoverUrl,
+  ).length;
+  const missingHeadshotCount = filteredRequests.filter(
+    (request) => !request.visitorRegistrationProfile?.headshotProcessedUrl,
   ).length;
 
   useEffect(() => {
@@ -1122,11 +1143,16 @@ function ApprovedVisitorRegistry({
     <section id="approved-visitors" className="rounded-lg border bg-card p-3 sm:p-4">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
         <div>
-          <h2 className="font-semibold">已通過訪員名冊管理</h2>
+          <h2 className="font-semibold">
+            {mode === "supplement" ? "待補件與待確認" : "已通過訪員名冊管理"}
+          </h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            審核通過後集中在這裡管理，適合 200 位以上志工用搜尋、篩選與匯出處理，不再用卡片連續排列。
+            {mode === "supplement"
+              ? "只列出資料、照片、存摺或匯款尚未齊備的人員，管理者可逐筆確認，不再和完整名冊混在一起。"
+              : "審核通過後集中在這裡管理，適合 200 位以上志工用搜尋、篩選與匯出處理，不再用卡片連續排列。"}
           </p>
         </div>
+        {mode === "approved" && (
         <div className="grid w-full gap-2 sm:grid-cols-3 xl:w-auto xl:min-w-[520px]">
           <Button
             type="button"
@@ -1158,17 +1184,31 @@ function ApprovedVisitorRegistry({
             完整匯出含照片
           </Button>
         </div>
+        )}
       </div>
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-        <ReviewMetric label="目前篩選筆數" value={filteredRequests.length} />
-        <ReviewMetric label="已處理照片" value={photoReadyCount} />
-        <ReviewMetric label="已發送邀請" value={inviteSentCount} />
-        <ReviewMetric label="匯款可用" value={remittanceReadyCount} />
-        <ReviewMetric label="可派案" value={verifiedCount} />
+      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-5">
+        {mode === "supplement" ? (
+          <>
+            <ReviewMetric label="待補人員" value={filteredRequests.length} />
+            <ReviewMetric label="待補個資" value={missingProfileCount} />
+            <ReviewMetric label="待補匯款" value={missingRemittanceCount} />
+            <ReviewMetric label="待傳存摺" value={missingPassbookCount} />
+            <ReviewMetric label="待處理照片" value={missingHeadshotCount} />
+          </>
+        ) : (
+          <>
+            <ReviewMetric label="目前筆數" value={filteredRequests.length} />
+            <ReviewMetric label="照片完成" value={photoReadyCount} />
+            <ReviewMetric label="已發邀請" value={inviteSentCount} />
+            <ReviewMetric label="匯款可用" value={remittanceReadyCount} />
+            <ReviewMetric label="可派案" value={verifiedCount} />
+          </>
+        )}
       </div>
 
-      <div className="mt-4 grid gap-2 md:grid-cols-5">
+      {mode === "approved" && (
+      <div className="mt-4 hidden gap-2 md:grid md:grid-cols-5">
         {(Object.keys(visitorRegistryViewLabels) as VisitorRegistryView[]).map((view) => (
           <button
             key={view}
@@ -1185,26 +1225,37 @@ function ApprovedVisitorRegistry({
           </button>
         ))}
       </div>
+      )}
 
       <div className="mt-4 rounded-lg border bg-background p-3">
         <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
           <div>
-            <p className="text-sm font-semibold">批次作業</p>
+            <p className="text-sm font-semibold">
+              {mode === "supplement" ? "補件批次處理" : "批次作業"}
+            </p>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              已勾選 {selectedRequests.length} 筆；若未勾選，批次按鈕會套用目前分頁與搜尋結果。
+              {mode === "supplement"
+                ? `已勾選 ${selectedRequests.length} 筆；可先勾選目前清單，再批次確認資料完成。`
+                : `已勾選 ${selectedRequests.length} 筆；若未勾選，批次按鈕會套用目前分頁與搜尋結果。`}
             </p>
           </div>
-          <div className="grid gap-2 sm:grid-cols-3">
+          <div className={`grid gap-2 ${mode === "supplement" ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
             <Button type="button" variant="outline" onClick={toggleAllVisible} disabled={filteredRequests.length === 0}>
               {allVisibleSelected ? "取消本頁勾選" : "勾選目前清單"}
             </Button>
+            {mode === "approved" && (
             <Button type="button" variant="outline" onClick={batchInviteVisitors} disabled={batchAction !== null}>
               <Mail className="h-4 w-4" />
               {batchAction === "invite" ? "發送中" : "批次發送邀請"}
             </Button>
+            )}
             <Button type="button" onClick={batchVerifyVisitors} disabled={batchAction !== null}>
               <CheckCircle2 className="h-4 w-4" />
-              {batchAction === "verify" ? "確認中" : "批次確認可派案"}
+              {batchAction === "verify"
+                ? "確認中"
+                : mode === "supplement"
+                  ? "批次確認完成"
+                  : "批次確認可派案"}
             </Button>
           </div>
         </div>
@@ -1241,6 +1292,7 @@ function ApprovedVisitorRegistry({
         {filteredRequests.map((request) => {
           const profile = request.visitorRegistrationProfile;
           const selected = selectedIds.includes(request.id);
+          const supplementIssues = getVisitorSupplementIssues(request);
           return (
             <article
               key={request.id}
@@ -1272,7 +1324,7 @@ function ApprovedVisitorRegistry({
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-semibold">{request.fullName}</h3>
                     <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
-                      已通過
+                      {mode === "supplement" ? "待補件" : "已通過"}
                     </span>
                   </div>
                   <p className="mt-1 break-words text-xs text-muted-foreground">
@@ -1288,6 +1340,18 @@ function ApprovedVisitorRegistry({
                   </p>
                 </div>
               </div>
+              {mode === "supplement" && supplementIssues.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {supplementIssues.map((issue) => (
+                    <span
+                      key={issue}
+                      className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-900"
+                    >
+                      {issue}
+                    </span>
+                  ))}
+                </div>
+              )}
               <div className="mt-3 grid gap-2 rounded-md bg-secondary/50 p-3 text-sm sm:grid-cols-2">
                 <p>手機：{profile?.phone ?? "未填"}</p>
                 <p>訪員證：{profile?.visitorCertificateNo ?? "待補"}</p>
@@ -1297,7 +1361,8 @@ function ApprovedVisitorRegistry({
                 <p>匯款審核：{remittanceStatusLabels[profile?.remittanceReviewStatus ?? "pending"]}</p>
                 <p>存摺：{profile?.passbookCoverUrl ? "已上傳" : "未上傳"}</p>
               </div>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <div className={`mt-3 grid gap-2 ${mode === "approved" ? "sm:grid-cols-2" : ""}`}>
+                {mode === "approved" && (
                 <Button
                   type="button"
                   variant={profile?.authInviteStatus === "sent" ? "outline" : "default"}
@@ -1316,6 +1381,7 @@ function ApprovedVisitorRegistry({
                       ? "重寄邀請"
                       : "發送邀請"}
                 </Button>
+                )}
                 <Button
                   type="button"
                   variant={profile?.profileCompletionStatus === "verified" ? "outline" : "default"}
@@ -1327,8 +1393,12 @@ function ApprovedVisitorRegistry({
                   {verifyingRequestId === request.id
                     ? "確認中"
                     : profile?.profileCompletionStatus === "verified"
-                      ? "已可派案"
-                      : "確認可派案"}
+                      ? mode === "supplement"
+                        ? "已確認完成"
+                        : "已可派案"
+                      : mode === "supplement"
+                        ? "確認補件完成"
+                        : "確認可派案"}
                 </Button>
               </div>
               <p className="mt-2 break-all text-xs text-muted-foreground">
@@ -1339,7 +1409,7 @@ function ApprovedVisitorRegistry({
         })}
         {filteredRequests.length === 0 && (
           <div className="rounded-lg border border-dashed bg-background p-4 text-sm text-muted-foreground">
-            目前沒有符合條件的已通過訪員。
+            {mode === "supplement" ? "目前沒有待補件或待確認的人員。" : "目前沒有符合條件的已通過訪員。"}
           </div>
         )}
       </div>
@@ -1432,6 +1502,7 @@ function ApprovedVisitorRegistry({
                   </td>
                   <td className="px-3 py-3">
                     <div className="flex flex-wrap gap-2">
+                      {mode === "approved" && (
                       <Button
                         type="button"
                         size="sm"
@@ -1450,6 +1521,7 @@ function ApprovedVisitorRegistry({
                             ? "重寄"
                             : "邀請"}
                       </Button>
+                      )}
                       <Button
                         type="button"
                         size="sm"
@@ -1461,8 +1533,12 @@ function ApprovedVisitorRegistry({
                         {verifyingRequestId === request.id
                           ? "確認中"
                           : profile?.profileCompletionStatus === "verified"
-                            ? "可派案"
-                            : "確認"}
+                            ? mode === "supplement"
+                              ? "已確認"
+                              : "可派案"
+                            : mode === "supplement"
+                              ? "確認完成"
+                              : "確認"}
                       </Button>
                     </div>
                   </td>
@@ -1473,16 +1549,38 @@ function ApprovedVisitorRegistry({
         </table>
         {filteredRequests.length === 0 && (
           <div className="border-t bg-background p-4 text-sm text-muted-foreground">
-            目前沒有符合條件的已通過訪員。
+            {mode === "supplement" ? "目前沒有待補件或待確認的人員。" : "目前沒有符合條件的已通過訪員。"}
           </div>
         )}
       </div>
 
+      {mode === "approved" && (
       <p className="mt-3 text-xs leading-5 text-muted-foreground">
         「完整匯出含照片」會把證件照以資料形式放入 JSON，適合備份或後續批次轉檔；CSV 名冊適合提供行政彙整。
       </p>
+      )}
     </section>
   );
+}
+
+function getVisitorSupplementIssues(request: UserRegistrationRequest) {
+  const profile = request.visitorRegistrationProfile;
+  const issues: string[] = [];
+
+  if (profile?.profileCompletionStatus !== "verified") {
+    issues.push("個資待確認");
+  }
+  if (!profile?.remittanceReady || profile.remittanceReviewStatus !== "approved") {
+    issues.push("匯款待確認");
+  }
+  if (!profile?.passbookCoverUrl) {
+    issues.push("存摺待上傳");
+  }
+  if (!profile?.headshotProcessedUrl) {
+    issues.push("證件照待處理");
+  }
+
+  return issues;
 }
 
 function matchesVisitorRegistryView(request: UserRegistrationRequest, view: VisitorRegistryView) {
