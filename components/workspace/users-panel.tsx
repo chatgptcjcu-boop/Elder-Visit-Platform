@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {
+  ArrowLeft,
   ArrowRight,
   Camera,
   CheckCircle2,
@@ -47,6 +48,8 @@ type UsersPayload = {
 
 type VisitorRegistryView = "all" | "needs_invite" | "needs_profile" | "needs_remittance" | "assignable";
 
+type UserManagementTab = "overview" | "pending" | "approved" | "supplement" | "registration" | "flow";
+
 export function UsersPanel() {
   const canReviewUsers = useCan("users.review");
   const [payload, setPayload] = useState<UsersPayload | null>(null);
@@ -55,6 +58,8 @@ export function UsersPanel() {
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
   const [registrationMessage, setRegistrationMessage] = useState<string | null>(null);
   const [reviewingRequestId, setReviewingRequestId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<UserManagementTab>("overview");
+  const [pendingIndex, setPendingIndex] = useState(0);
   const pendingRequests = useMemo(
     () =>
       payload?.registrationRequests.filter(
@@ -100,6 +105,10 @@ export function UsersPanel() {
   useEffect(() => {
     void loadUsers();
   }, []);
+
+  useEffect(() => {
+    setPendingIndex((current) => Math.min(current, Math.max(pendingRequests.length - 1, 0)));
+  }, [pendingRequests.length]);
 
   useEffect(() => {
     async function loadVisitorProfiles() {
@@ -176,6 +185,53 @@ export function UsersPanel() {
     }
   }
 
+  function handleVisitorInvited(invitation: VisitorInvitationResult) {
+    setPayload((current) =>
+      current
+        ? {
+            ...current,
+            registrationRequests: current.registrationRequests.map((request) =>
+              request.id === invitation.requestId && request.visitorRegistrationProfile
+                ? {
+                    ...request,
+                    visitorRegistrationProfile: {
+                      ...request.visitorRegistrationProfile,
+                      authInviteStatus: invitation.status,
+                      authInvitedAt:
+                        invitation.status === "sent"
+                          ? new Date().toISOString()
+                          : request.visitorRegistrationProfile.authInvitedAt,
+                    },
+                  }
+                : request,
+            ),
+          }
+        : current,
+    );
+  }
+
+  function handleVisitorVerified(requestId: string) {
+    setPayload((current) =>
+      current
+        ? {
+            ...current,
+            registrationRequests: current.registrationRequests.map((request) =>
+              request.id === requestId && request.visitorRegistrationProfile
+                ? {
+                    ...request,
+                    visitorRegistrationProfile: {
+                      ...request.visitorRegistrationProfile,
+                      profileCompletionStatus: "verified",
+                      profileReviewedAt: new Date().toISOString(),
+                    },
+                  }
+                : request,
+            ),
+          }
+        : current,
+    );
+  }
+
   return (
     <div className="grid gap-4">
       <section className="rounded-lg border bg-card p-4 sm:p-5">
@@ -205,33 +261,45 @@ export function UsersPanel() {
 
       {payload && (
         <>
-          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <UserDashboardMetric
-              icon={Clock3}
-              label="待審核"
-              value={pendingRequests.length}
-              detail="新註冊或尚未通過的申請"
-            />
-            <UserDashboardMetric
-              icon={Mail}
-              label="待發邀請"
-              value={needsInviteCount}
-              detail="已通過但尚未發登入邀請"
-            />
+          <section className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+            <UserDashboardMetric icon={Clock3} label="待審核" value={pendingRequests.length} />
+            <UserDashboardMetric icon={Mail} label="待邀請" value={needsInviteCount} />
             <UserDashboardMetric
               icon={IdCard}
-              label="待補/待確認"
+              label="待補件"
               value={needsCompletionCount}
-              detail={`個資待確認 ${needsProfileCount}，匯款待確認 ${needsRemittanceCount}`}
+              detail={`個資 ${needsProfileCount} / 匯款 ${needsRemittanceCount}`}
             />
+            <UserDashboardMetric icon={CheckCircle2} label="可派案" value={assignableCount} />
+            <UserDashboardMetric icon={XCircle} label="已退回" value={rejectedRequests.length} />
             <UserDashboardMetric
-              icon={CheckCircle2}
-              label="已可派案"
-              value={assignableCount}
-              detail="資料與匯款確認完成"
+              icon={Camera}
+              label="證件照"
+              value={approvedPhotoCount}
+              detail={`/${approvedRequests.length}`}
             />
           </section>
 
+          <section className="rounded-lg border bg-card p-2">
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+              {(Object.keys(userManagementTabLabels) as UserManagementTab[]).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  className={`rounded-md px-3 py-2 text-sm font-medium ${
+                    activeTab === tab
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background text-muted-foreground"
+                  }`}
+                  onClick={() => setActiveTab(tab)}
+                >
+                  {userManagementTabLabels[tab]}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {activeTab === "overview" && (
           <section className="rounded-lg border bg-card p-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -246,174 +314,64 @@ export function UsersPanel() {
               <UserActionCard
                 title="先處理待審核"
                 detail={`${pendingRequests.length} 筆申請待承辦管理者確認。`}
-                href="#pending-requests"
+                onClick={() => setActiveTab("pending")}
                 icon={ClipboardCheck}
               />
               <UserActionCard
                 title="再發登入邀請"
                 detail={`${needsInviteCount} 位已通過訪員尚未收到登入邀請。`}
-                href="#approved-visitors"
+                onClick={() => setActiveTab("approved")}
                 icon={Mail}
               />
               <UserActionCard
                 title="追補資料與匯款"
                 detail={`${needsCompletionCount} 位訪員仍需確認或補件；同一人不重複計算。`}
-                href="#approved-visitors"
+                onClick={() => setActiveTab("supplement")}
                 icon={IdCard}
               />
               <UserActionCard
                 title="確認可派案名冊"
                 detail={`${assignableCount} 位訪員可納入派案與核銷流程。`}
-                href="#approved-visitors"
+                onClick={() => setActiveTab("approved")}
                 icon={CheckCircle2}
               />
             </div>
           </section>
+          )}
 
-          <section id="pending-requests" className="rounded-lg border bg-card p-4">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <h2 className="font-semibold">待審核申請</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  只顯示尚未通過或退回的申請，通過後會自動進入下方名冊管理。
-                </p>
-              </div>
-              <span className="rounded-full bg-secondary px-3 py-1 text-sm font-medium">
-                {pendingRequests.length} 筆待處理
-              </span>
-            </div>
-            {pendingRequests.length === 0 ? (
-              <div className="mt-4 rounded-md border border-dashed bg-background p-4 text-sm text-muted-foreground">
-                目前沒有待審核申請。已通過的志工請到下方「已通過訪員名冊」管理與匯出。
-              </div>
-            ) : (
-              <div className="mt-4 grid gap-3 lg:grid-cols-2">
-                {pendingRequests.map((request) => {
-              const isReviewing = reviewingRequestId === request.id;
+          {activeTab === "pending" && (
+            <PendingReviewDeck
+              canReviewUsers={canReviewUsers}
+              currentIndex={pendingIndex}
+              onIndexChange={setPendingIndex}
+              onReview={review}
+              requests={pendingRequests}
+              reviewingRequestId={reviewingRequestId}
+            />
+          )}
 
-              return (
-              <article key={request.id} className="rounded-lg border bg-card p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h2 className="font-semibold">
-                      {request.visitorRegistrationProfile?.displayName ?? request.fullName}
-                    </h2>
-                    <p className="mt-1 text-sm text-muted-foreground">{request.email}</p>
-                  </div>
-                  <span className="rounded-full bg-secondary px-2 py-1 text-xs font-medium">
-                    {registrationStatusLabels[request.status] ?? request.status}
-                  </span>
-                </div>
-                <div className="mt-4 space-y-2 text-sm text-muted-foreground">
-                  <p>單位：{request.requestedUnitName}</p>
-                  <p>工作空間：{request.requestedWorkspaceName}</p>
-                  <p>
-                    申請角色：
-                    {workspaceRoles.find((role) => role.key === request.requestedRoleKey)?.label}
-                  </p>
-                  {request.visitorRegistrationProfile && (
-                    <div className="grid gap-2 rounded-md bg-secondary/60 p-3 sm:grid-cols-2">
-                      <p>
-                        類別：
-                        {workerGroupLabels[request.visitorRegistrationProfile.workerGroup]}
-                      </p>
-                      <p>職稱：{normalizedJobTitle(request.visitorRegistrationProfile)}</p>
-                      <p>性別：{request.visitorRegistrationProfile.gender}</p>
-                      <p>
-                        教育訓練：
-                        {request.visitorRegistrationProfile.trainingCompleted ? "已完成" : "未完成"}
-                      </p>
-                      <p>
-                        訪員證：
-                        {request.visitorRegistrationProfile.visitorCertificateNo ?? "待補"}
-                      </p>
-                      <p>
-                        社會局覆核：
-                        {reviewStatusLabels[
-                          request.visitorRegistrationProfile.socialBureauReviewStatus
-                        ]}
-                      </p>
-                    </div>
-                  )}
-                  {request.reviewNote && <p>{request.reviewNote}</p>}
-                </div>
-                <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                  <Button
-                    disabled={!canReviewUsers || isReviewing}
-                    onClick={() => review(request, "approve")}
-                  >
-                    <CheckCircle2 className="h-4 w-4" />
-                    {isReviewing ? "處理中" : "核准加入"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    disabled={!canReviewUsers || isReviewing}
-                    onClick={() => review(request, "reject")}
-                  >
-                    <XCircle className="h-4 w-4" />
-                    退回申請
-                  </Button>
-                </div>
-                {!canReviewUsers && (
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    目前角色沒有審核註冊申請權限。
-                  </p>
-                )}
-              </article>
-            )})}
-              </div>
-            )}
-          </section>
-
+          {activeTab === "approved" && (
           <ApprovedVisitorRegistry
             requests={approvedRequests}
-            onInvited={(invitation) => {
-              setPayload((current) =>
-                current
-                  ? {
-                      ...current,
-                      registrationRequests: current.registrationRequests.map((request) =>
-                        request.id === invitation.requestId && request.visitorRegistrationProfile
-                          ? {
-                              ...request,
-                              visitorRegistrationProfile: {
-                                ...request.visitorRegistrationProfile,
-                                authInviteStatus: invitation.status,
-                                authInvitedAt:
-                                  invitation.status === "sent"
-                                    ? new Date().toISOString()
-                                    : request.visitorRegistrationProfile.authInvitedAt,
-                              },
-                            }
-                          : request,
-                      ),
-                    }
-                  : current,
-              );
-            }}
-            onVerified={(requestId) => {
-              setPayload((current) =>
-                current
-                  ? {
-                      ...current,
-                      registrationRequests: current.registrationRequests.map((request) =>
-                        request.id === requestId && request.visitorRegistrationProfile
-                          ? {
-                              ...request,
-                              visitorRegistrationProfile: {
-                                ...request.visitorRegistrationProfile,
-                                profileCompletionStatus: "verified",
-                                profileReviewedAt: new Date().toISOString(),
-                              },
-                            }
-                          : request,
-                      ),
-                    }
-                  : current,
-              );
-            }}
+            onInvited={handleVisitorInvited}
+            onVerified={handleVisitorVerified}
           />
+          )}
 
+          {activeTab === "supplement" && (
+            <ApprovedVisitorRegistry
+              requests={approvedRequests.filter(
+                (request) =>
+                  matchesVisitorRegistryView(request, "needs_profile") ||
+                  matchesVisitorRegistryView(request, "needs_remittance"),
+              )}
+              onInvited={handleVisitorInvited}
+              onVerified={handleVisitorVerified}
+            />
+          )}
+
+          {activeTab === "registration" && (
+          <>
           <section className="rounded-lg border bg-card p-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
@@ -470,7 +428,10 @@ export function UsersPanel() {
               );
             }}
           />
+          </>
+          )}
 
+          {activeTab === "flow" && (
           <section className="rounded-lg border bg-card p-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
@@ -492,6 +453,7 @@ export function UsersPanel() {
               ))}
             </div>
           </section>
+          )}
         </>
       )}
 
@@ -581,6 +543,15 @@ const visitorRegistryViewLabels: Record<VisitorRegistryView, string> = {
   assignable: "已可派案",
 };
 
+const userManagementTabLabels: Record<UserManagementTab, string> = {
+  overview: "總覽",
+  pending: "待審核",
+  approved: "已通過",
+  supplement: "待補件",
+  registration: "註冊入口",
+  flow: "流程索引",
+};
+
 function ReviewMetric({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-md border bg-background p-3">
@@ -599,18 +570,18 @@ function UserDashboardMetric({
   icon: LucideIcon;
   label: string;
   value: number;
-  detail: string;
+  detail?: string;
 }) {
   return (
-    <article className="rounded-lg border bg-card p-4">
-      <div className="flex items-start justify-between gap-3">
+    <article className="rounded-lg border bg-card p-3">
+      <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="mt-2 text-3xl font-semibold tracking-normal">{value}</p>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">{detail}</p>
+          <p className="text-xs text-muted-foreground">{label}</p>
+          <p className="mt-1 text-2xl font-semibold tracking-normal">{value}</p>
+          {detail && <p className="mt-1 text-xs leading-5 text-muted-foreground">{detail}</p>}
         </div>
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-          <Icon className="h-5 w-5" />
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+          <Icon className="h-4 w-4" />
         </span>
       </div>
     </article>
@@ -620,12 +591,12 @@ function UserDashboardMetric({
 function UserActionCard({
   title,
   detail,
-  href,
+  onClick,
   icon: Icon,
 }: {
   title: string;
   detail: string;
-  href: string;
+  onClick: () => void;
   icon: LucideIcon;
 }) {
   return (
@@ -639,10 +610,14 @@ function UserActionCard({
           <Icon className="h-5 w-5" />
         </span>
       </div>
-      <a href={href} className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-primary">
+      <button
+        type="button"
+        className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-primary"
+        onClick={onClick}
+      >
         前往處理
         <ArrowRight className="h-4 w-4" />
-      </a>
+      </button>
     </article>
   );
 }
@@ -652,6 +627,194 @@ function StatusRow({ label, value }: { label: string; value: string }) {
     <div className="flex items-center justify-between gap-3 border-b pb-2 last:border-b-0 last:pb-0">
       <span className="text-muted-foreground">{label}</span>
       <span className="text-right font-medium">{value}</span>
+    </div>
+  );
+}
+
+function PendingReviewDeck({
+  requests,
+  currentIndex,
+  onIndexChange,
+  canReviewUsers,
+  reviewingRequestId,
+  onReview,
+}: {
+  requests: UserRegistrationRequest[];
+  currentIndex: number;
+  onIndexChange: (index: number) => void;
+  canReviewUsers: boolean;
+  reviewingRequestId: string | null;
+  onReview: (request: UserRegistrationRequest, decision: "approve" | "reject") => Promise<void>;
+}) {
+  const currentRequest = requests[currentIndex] ?? null;
+  const isReviewing = currentRequest ? reviewingRequestId === currentRequest.id : false;
+
+  function move(delta: number) {
+    if (requests.length === 0) return;
+    const nextIndex = Math.min(Math.max(currentIndex + delta, 0), requests.length - 1);
+    onIndexChange(nextIndex);
+  }
+
+  async function decide(decision: "approve" | "reject") {
+    if (!currentRequest) return;
+    await onReview(currentRequest, decision);
+    onIndexChange(Math.min(currentIndex, Math.max(requests.length - 2, 0)));
+  }
+
+  if (!currentRequest) {
+    return (
+      <section id="pending-requests" className="rounded-lg border bg-card p-4">
+        <div className="flex items-center gap-2 text-primary">
+          <ClipboardCheck className="h-5 w-5" />
+          <h2 className="font-semibold">待審核翻卡</h2>
+        </div>
+        <div className="mt-4 rounded-lg border border-dashed bg-background p-6 text-center text-sm text-muted-foreground">
+          目前沒有待審核申請。新註冊資料送出後，會出現在這裡逐筆確認。
+        </div>
+      </section>
+    );
+  }
+
+  const profile = currentRequest.visitorRegistrationProfile;
+  const roleLabel =
+    workspaceRoles.find((role) => role.key === currentRequest.requestedRoleKey)?.label ??
+    currentRequest.requestedRoleKey;
+  const workerLabel = profile ? workerGroupLabels[profile.workerGroup] : "尚未分類";
+
+  return (
+    <section id="pending-requests" className="rounded-lg border bg-card p-3 sm:p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2 text-primary">
+            <ClipboardCheck className="h-5 w-5" />
+            <h2 className="font-semibold">待審核翻卡</h2>
+          </div>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            手機上固定看一筆，核准或退回後自動停在下一筆，避免長清單反覆滑動。
+          </p>
+        </div>
+        <div className="flex items-center justify-between gap-2 sm:justify-end">
+          <Button type="button" variant="outline" size="sm" onClick={() => move(-1)} disabled={currentIndex === 0}>
+            <ArrowLeft className="h-4 w-4" />
+            上一筆
+          </Button>
+          <span className="rounded-md bg-secondary px-3 py-2 text-sm font-medium">
+            {currentIndex + 1} / {requests.length}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => move(1)}
+            disabled={currentIndex >= requests.length - 1}
+          >
+            下一筆
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      <article className="mt-4 rounded-lg border bg-background p-4">
+        <div className="grid gap-4 lg:grid-cols-[10rem_1fr]">
+          <div className="flex flex-col items-center gap-3 rounded-lg border bg-card p-3">
+            {profile?.headshotProcessedUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={profile.headshotProcessedUrl}
+                alt={`${currentRequest.fullName} 證件照`}
+                className="h-32 w-24 rounded border object-cover"
+              />
+            ) : (
+              <div className="flex h-32 w-24 items-center justify-center rounded border bg-secondary text-xs text-muted-foreground">
+                尚無證件照
+              </div>
+            )}
+            <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+              {registrationStatusLabels[currentRequest.status] ?? currentRequest.status}
+            </span>
+          </div>
+
+          <div className="min-w-0">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h3 className="text-xl font-semibold">{currentRequest.fullName}</h3>
+                <p className="mt-1 break-words text-sm text-muted-foreground">
+                  {profile?.displayName ?? `${currentRequest.requestedUnitName}-${currentRequest.fullName}-${roleLabel}`}
+                </p>
+              </div>
+              <span className="w-fit rounded-md bg-secondary px-3 py-1 text-sm font-medium">{roleLabel}</span>
+            </div>
+
+            <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2 xl:grid-cols-3">
+              <StatusTile label="申請單位" value={currentRequest.requestedUnitName} />
+              <StatusTile label="科室 / 類別" value={`${profile?.departmentName ?? "未填"} / ${workerLabel}`} />
+              <StatusTile label="職稱" value={profile ? normalizedJobTitle(profile) : "未填"} />
+              <StatusTile label="信箱" value={currentRequest.email} />
+              <StatusTile label="手機" value={profile?.phone ?? "未填"} />
+              <StatusTile label="身分證字號" value={profile?.nationalId ?? "未填"} />
+              <StatusTile label="教育訓練" value={profile?.trainingCompleted ? "已完成" : "未完成"} />
+              <StatusTile
+                label="社會局覆核"
+                value={reviewStatusLabels[profile?.socialBureauReviewStatus ?? "not_sent"]}
+              />
+              <StatusTile label="匯款資料" value={profile?.remittanceReady ? "已齊備" : "待補/待確認"} />
+            </div>
+
+            {currentRequest.reviewNote && (
+              <div className="mt-4 rounded-md border bg-card p-3 text-sm leading-6 text-muted-foreground">
+                備註：{currentRequest.reviewNote}
+              </div>
+            )}
+
+            <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+              <Button
+                type="button"
+                className="w-full"
+                disabled={!canReviewUsers || isReviewing}
+                onClick={() => decide("approve")}
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                {isReviewing ? "處理中" : "核准加入"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                disabled={!canReviewUsers || isReviewing}
+                onClick={() => decide("reject")}
+              >
+                <XCircle className="h-4 w-4" />
+                退回申請
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full sm:w-auto"
+                onClick={() => move(1)}
+                disabled={currentIndex >= requests.length - 1}
+              >
+                略過
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {!canReviewUsers && (
+              <p className="mt-3 text-xs text-muted-foreground">
+                目前角色沒有審核權限，只能檢視申請內容。
+              </p>
+            )}
+          </div>
+        </div>
+      </article>
+    </section>
+  );
+}
+
+function StatusTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border bg-card p-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 break-words font-medium">{value}</p>
     </div>
   );
 }
