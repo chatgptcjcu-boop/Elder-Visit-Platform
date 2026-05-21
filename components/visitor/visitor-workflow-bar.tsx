@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { CheckCircle2, ClipboardCheck, FilePenLine, Send } from "lucide-react";
+import { CheckCircle2, ClipboardCheck, FilePenLine, Send, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getVisitDraftKey } from "@/lib/domain/offline-drafts";
 import { visitSchedules } from "@/lib/domain/mock-data";
 
-type WorkflowStep = "tasks" | "visit" | "drafts" | "submitted";
+type WorkflowStep = "profile" | "tasks" | "visit" | "drafts" | "submitted";
 
 export function VisitorWorkflowBar({
   active,
@@ -26,6 +26,13 @@ export function VisitorWorkflowBar({
   }, []);
 
   const steps = [
+    {
+      key: "profile" as const,
+      label: "資料",
+      detail: "補齊個人資料",
+      href: "/visitor/profile",
+      icon: UserRound,
+    },
     {
       key: "tasks" as const,
       label: "接案",
@@ -58,7 +65,7 @@ export function VisitorWorkflowBar({
 
   return (
     <section className="rounded-lg border bg-card p-3">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         {steps.map((step) => {
           const Icon = step.icon;
           const isActive = step.key === active;

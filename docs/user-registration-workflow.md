@@ -64,3 +64,9 @@
 - `workspace_memberships`: 使用者與 Workspace 的角色關聯
 - `workspace_roles`: 角色與 capability 設定
 - `workspace_permission_logs`: 權限與角色異動紀錄
+
+## 下一階段補充規劃
+
+註冊審核後的正式登入啟用、訪員前台自行補資料、訪員唯一編碼與 QR Code 追蹤，請依照：
+
+- `docs/visitor-login-profile-completion-plan.md`

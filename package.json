@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "task:new": "node scripts/create-task-brief.mjs",
+    "task:orchestrate": "node scripts/orchestrate-task.mjs",
+    "task:close": "node scripts/close-task.mjs"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.1.2",

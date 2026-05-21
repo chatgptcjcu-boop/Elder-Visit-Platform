@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { authenticateDemoAccount, demoLoginAccounts } from "@/lib/domain/permissions";
 import type { WorkspaceRoleKey } from "@/lib/domain/types";
 
@@ -40,12 +41,13 @@ export async function POST(request: NextRequest) {
 
     if (!error && data.user) {
       const roleKey = await getSupabaseRoleKey(data.user.id, demoAccount?.roleKey ?? inferRoleKey(email));
+      await markSupabaseUserActivated(data.user.id, data.user.email ?? email);
       const response = NextResponse.json({
         data: {
           ok: true,
           mode: "supabase",
           roleKey,
-          nextPath: getSafeNextPath(body.next ?? null, demoAccount?.landingPath ?? "/dashboard"),
+          nextPath: getSafeNextPath(body.next ?? null, demoAccount?.landingPath ?? getDefaultLandingPath(roleKey)),
         },
       });
 
@@ -92,6 +94,38 @@ export async function POST(request: NextRequest) {
   return response;
 }
 
+function getDefaultLandingPath(roleKey: WorkspaceRoleKey) {
+  if (roleKey === "visitor") return "/visitor/profile";
+  if (roleKey === "supervisor" || roleKey === "auditor") return "/manager/audit";
+  return "/dashboard";
+}
+
+async function markSupabaseUserActivated(authUserId: string, email: string) {
+  try {
+    const supabase = createAdminClient();
+    const now = new Date().toISOString();
+
+    await (supabase as unknown as AccountActivationClient)
+      .from("accounts")
+      .update({
+        auth_user_id: authUserId,
+        updated_at: now,
+      })
+      .eq("email", email);
+
+    await (supabase as unknown as RegistrationActivationClient)
+      .from("workspace_registration_requests")
+      .update({
+        auth_invite_status: "activated",
+        auth_activated_at: now,
+      })
+      .eq("email", email)
+      .eq("status", "approved");
+  } catch {
+    // Login should not fail if activation status sync is temporarily unavailable.
+  }
+}
+
 type SupabaseRoleClient = {
   from(table: "accounts"): {
     select(query: string): {
@@ -105,6 +139,30 @@ type SupabaseRoleClient = {
                 }>
               | null;
           } | null;
+          error: unknown;
+        }>;
+      };
+    };
+  };
+};
+
+type AccountActivationClient = {
+  from(table: "accounts"): {
+    update(row: Record<string, unknown>): {
+      eq(column: string, value: string): Promise<{
+        data: unknown;
+        error: unknown;
+      }>;
+    };
+  };
+};
+
+type RegistrationActivationClient = {
+  from(table: "workspace_registration_requests"): {
+    update(row: Record<string, unknown>): {
+      eq(column: string, value: string): {
+        eq(column: string, value: string): Promise<{
+          data: unknown;
           error: unknown;
         }>;
       };

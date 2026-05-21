@@ -4,9 +4,11 @@ import type {
   UserRegistrationDecision,
   UserRegistrationDecisionResult,
   UserRegistrationRequest,
+  VisitorInvitationResult,
   VisitorRegistrationSubmission,
   VisitorRegistrationSubmissionResult,
   VisitorRegistrationWorkerGroup,
+  VisitorRemittanceReviewStatus,
   WorkspaceRoleKey,
 } from "@/lib/domain/types";
 
@@ -67,6 +69,25 @@ export const registrationRequests: UserRegistrationRequest[] = [
       socialBureauReviewStatus: "pending",
       socialBureauReviewedAt: null,
       socialBureauReviewNote: null,
+      registrationCode: "REG-115-YH-0001",
+      authInviteStatus: "not_sent",
+      authInvitedAt: null,
+      authActivatedAt: null,
+      profileCompletionStatus: "submitted",
+      profileSubmittedAt: "2026-04-26T09:15:00+08:00",
+      profileReviewedAt: null,
+      profileReturnReason: null,
+      visitorCode: null,
+      qrCodePayload: null,
+      bankAccountLast5: null,
+      bankName: null,
+      bankCode: null,
+      bankBranchName: null,
+      bankAccountName: null,
+      passbookCoverUrl: null,
+      passbookUploadedAt: null,
+      remittanceReviewStatus: "pending",
+      remittanceReady: false,
       note: "由民政課提報，可支援里別派案與共訪。",
     },
   },
@@ -121,10 +142,22 @@ export function createVisitorDisplayName(
   return `${submission.rootUnitName}${department}-${submission.fullName || "未填姓名"}-${jobTitle}`;
 }
 
+function getInitialProfileCompletionStatus(submission: VisitorRegistrationSubmission) {
+  return submission.fullName &&
+    submission.email &&
+    submission.nationalId &&
+    submission.phone &&
+    submission.headshotProcessedUrl
+    ? "submitted"
+    : "incomplete";
+}
+
 export async function submitVisitorRegistration(
   submission: VisitorRegistrationSubmission,
 ): Promise<VisitorRegistrationSubmissionResult> {
   const displayName = createVisitorDisplayName(submission);
+  const submittedAt = new Date().toISOString();
+  const profileCompletionStatus = getInitialProfileCompletionStatus(submission);
   const request: UserRegistrationRequest = {
     id: `reg_${Date.now()}`,
     email: submission.email,
@@ -138,7 +171,7 @@ export async function submitVisitorRegistration(
     requestedWorkspaceName: submission.requestedWorkspaceName,
     requestedRoleKey: "visitor",
     status: submission.trainingCompleted ? "pending_social_bureau_review" : "pending_supervisor_review",
-    submittedAt: new Date().toISOString(),
+    submittedAt,
     reviewNote: submission.trainingCompleted
       ? "訪員已送出註冊資料，待承辦與社會局覆核。"
       : "尚未完成教育訓練，需承辦先退補或保留待補。",
@@ -148,6 +181,25 @@ export async function submitVisitorRegistration(
       socialBureauReviewStatus: submission.trainingCompleted ? "pending" : "not_sent",
       socialBureauReviewedAt: null,
       socialBureauReviewNote: null,
+      registrationCode: null,
+      authInviteStatus: "not_sent",
+      authInvitedAt: null,
+      authActivatedAt: null,
+      profileCompletionStatus,
+      profileSubmittedAt: profileCompletionStatus === "submitted" ? submittedAt : null,
+      profileReviewedAt: null,
+      profileReturnReason: null,
+      visitorCode: null,
+      qrCodePayload: null,
+      bankAccountLast5: null,
+      bankName: null,
+      bankCode: null,
+      bankBranchName: null,
+      bankAccountName: null,
+      passbookCoverUrl: null,
+      passbookUploadedAt: null,
+      remittanceReviewStatus: "pending",
+      remittanceReady: false,
     },
   };
 
@@ -202,6 +254,107 @@ export async function reviewRegistration(
   };
 }
 
+export async function inviteApprovedVisitor(
+  requestId: string,
+  origin: string,
+): Promise<VisitorInvitationResult> {
+  try {
+    const supabase = createAdminClient();
+    const { data: request, error } = await (supabase as unknown as RegistrationRequestByIdClient)
+      .from("workspace_registration_requests")
+      .select("*")
+      .eq("id", requestId)
+      .single();
+
+    if (error || !request) {
+      return {
+        requestId,
+        email: "",
+        status: "failed",
+        message: "找不到這筆已通過訪員註冊資料。",
+        nextStep: "請重新整理使用者管理頁後再試一次。",
+      };
+    }
+
+    if (request.status !== "approved") {
+      return {
+        requestId,
+        email: request.email,
+        status: "failed",
+        message: "這筆註冊尚未審核通過，不能發送登入邀請。",
+        nextStep: "請先完成核准加入，再發送登入邀請。",
+      };
+    }
+
+    const redirectTo = `${origin}/login?invited=1`;
+    const inviteResult = await supabase.auth.admin.inviteUserByEmail(request.email, {
+      redirectTo,
+      data: {
+        full_name: request.full_name,
+        role_key: request.requested_role_key,
+        visitor_code: request.visitor_code,
+        registration_code: request.registration_code,
+      },
+    });
+
+    if (inviteResult.error || !inviteResult.data.user) {
+      await updateInvitationStatus(supabase, request, "failed", null);
+      return {
+        requestId,
+        email: request.email,
+        status: "failed",
+        message: inviteResult.error?.message ?? "Supabase Auth 邀請信發送失敗。",
+        nextStep: "請確認 Supabase Email Auth、SMTP 或專案寄信限制，修正後可重寄邀請。",
+      };
+    }
+
+    await updateInvitationStatus(supabase, request, "sent", inviteResult.data.user.id);
+
+    return {
+      requestId,
+      email: request.email,
+      status: "sent",
+      message: `已發送登入設定邀請到 ${request.email}。`,
+      nextStep: "訪員收到信後可進入設定密碼流程；若未收到，可在後台重寄邀請。",
+    };
+  } catch {
+    return {
+      requestId,
+      email: "",
+      status: "failed",
+      message: "發送登入邀請失敗，可能是 Supabase 管理端環境尚未設定。",
+      nextStep: "請確認 NEXT_PUBLIC_SUPABASE_URL 與 SUPABASE_SERVICE_ROLE_KEY 已設定。",
+    };
+  }
+}
+
+async function updateInvitationStatus(
+  supabase: unknown,
+  request: WorkspaceRegistrationRequestRow,
+  status: "sent" | "failed",
+  authUserId: string | null,
+) {
+  const now = new Date().toISOString();
+
+  await (supabase as RegistrationRequestReviewClient)
+    .from("workspace_registration_requests")
+    .update({
+      auth_invite_status: status,
+      auth_invited_at: status === "sent" ? now : request.auth_invited_at,
+    })
+    .eq("id", request.id);
+
+  if (authUserId && request.account_id) {
+    await (supabase as AccountAuthUserUpdateClient)
+      .from("accounts")
+      .update({
+        auth_user_id: authUserId,
+        updated_at: now,
+      })
+      .eq("id", request.account_id);
+  }
+}
+
 async function reviewSupabaseRegistration(
   decision: UserRegistrationDecision,
 ): Promise<UserRegistrationDecisionResult | null> {
@@ -224,6 +377,9 @@ async function reviewSupabaseRegistration(
         social_bureau_review_status: status,
         social_bureau_reviewed_at: reviewedAt,
         social_bureau_review_note: reviewNote,
+        profile_completion_status: decision.decision === "approve" ? "submitted" : "returned",
+        profile_reviewed_at: reviewedAt,
+        profile_return_reason: decision.decision === "reject" ? reviewNote : null,
       })
       .eq("id", decision.requestId)
       .select("*")
@@ -298,7 +454,14 @@ async function activateApprovedRegistration(
     );
 
   if (decision.roleKey === "visitor") {
-    await upsertVisitorProfile(supabase, row, account.id, workspaceId);
+    const visitorIdentity = await upsertVisitorProfile(supabase, row, account.id, workspaceId);
+    await (supabase as RegistrationRequestReviewClient)
+      .from("workspace_registration_requests")
+      .update({
+        visitor_code: visitorIdentity.visitorCode,
+        qr_code_payload: visitorIdentity.qrCodePayload,
+      })
+      .eq("id", row.id);
   }
 }
 
@@ -310,18 +473,26 @@ async function upsertVisitorProfile(
 ) {
   const { data: existing } = await (supabase as VisitorProfileReviewClient)
     .from("visitor_profiles")
-    .select("id")
+    .select("id, visitor_code")
     .eq("workspace_id", workspaceId)
     .eq("account_id", accountId)
     .limit(1)
     .maybeSingle();
 
+  const workerType = normalizeWorkerGroup(row.worker_group) === "civil_affairs" ? "civil_affairs" : "social_affairs";
+  const visitorCode =
+    existing?.visitor_code ?? (await createVisitorCode(supabase, workspaceId, workerType, row.registration_code ?? row.id));
+  const qrCodePayload = createVisitorQrCodePayload(visitorCode);
+  const profileCompletionStatus = getRowProfileCompletionStatus(row);
+  const now = new Date().toISOString();
+
   const profileRow = {
     workspace_id: workspaceId,
     account_id: accountId,
     full_name: row.full_name,
-    status: "available",
-    worker_type: normalizeWorkerGroup(row.worker_group) === "civil_affairs" ? "civil_affairs" : "social_affairs",
+    status: profileCompletionStatus === "submitted" ? "available" : "pending_profile_completion",
+    worker_type: workerType,
+    visitor_code: visitorCode,
     visitor_certificate_no: row.visitor_certificate_no,
     certificate_status: row.visitor_certificate_no ? "valid" : "missing",
     training_date: row.training_completed_at,
@@ -335,8 +506,14 @@ async function upsertVisitorProfile(
     phone: row.phone,
     headshot_processed_url: row.headshot_processed_url,
     social_bureau_review_status: "approved",
-    social_bureau_reviewed_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    social_bureau_reviewed_at: now,
+    profile_completion_status: profileCompletionStatus,
+    profile_completed_at: profileCompletionStatus === "submitted" ? (row.profile_submitted_at ?? now) : null,
+    profile_reviewed_at: row.profile_reviewed_at,
+    qr_code_payload: qrCodePayload,
+    qr_code_generated_at: now,
+    is_assignable: false,
+    updated_at: now,
   };
 
   if (existing?.id) {
@@ -344,10 +521,11 @@ async function upsertVisitorProfile(
       .from("visitor_profiles")
       .update(profileRow)
       .eq("id", existing.id);
-    return;
+    return { visitorCode, qrCodePayload };
   }
 
   await (supabase as VisitorProfileReviewClient).from("visitor_profiles").insert(profileRow);
+  return { visitorCode, qrCodePayload };
 }
 
 async function getSupabaseRegistrationRequests(): Promise<UserRegistrationRequest[]> {
@@ -363,9 +541,41 @@ async function getSupabaseRegistrationRequests(): Promise<UserRegistrationReques
       return [];
     }
 
-    return data.map(mapRegistrationRow);
+    const profiles = await getSupabaseVisitorProfileRemittance(data);
+
+    return data.map((row) => mapRegistrationRow(row, profiles.get(row.account_id ?? "")));
   } catch {
     return [];
+  }
+}
+
+async function getSupabaseVisitorProfileRemittance(
+  requests: WorkspaceRegistrationRequestRow[],
+): Promise<Map<string, VisitorProfileRemittanceRow>> {
+  const accountIds = Array.from(
+    new Set(requests.map((request) => request.account_id).filter((id): id is string => Boolean(id))),
+  );
+
+  if (accountIds.length === 0) {
+    return new Map();
+  }
+
+  try {
+    const supabase = createAdminClient();
+    const { data, error } = await (supabase as unknown as VisitorProfileRemittanceClient)
+      .from("visitor_profiles")
+      .select(
+        "account_id, bank_account_last5, bank_name, bank_code, bank_branch_name, bank_account_name, passbook_cover_url, passbook_uploaded_at, remittance_review_status, remittance_ready",
+      )
+      .in("account_id", accountIds);
+
+    if (error || !data) {
+      return new Map();
+    }
+
+    return new Map(data.map((profile) => [profile.account_id, profile]));
+  } catch {
+    return new Map();
   }
 }
 
@@ -380,9 +590,11 @@ async function insertSupabaseRegistrationRequest(
     const supabase = createAdminClient();
     const workspace = await getSupabaseActiveWorkspace();
     const profile = request.visitorRegistrationProfile;
+    const profileCompletionStatus = profile?.profileCompletionStatus ?? "incomplete";
     const { data, error } = await (supabase as unknown as RegistrationRequestWriteClient)
       .from("workspace_registration_requests")
       .insert({
+        registration_code: profile?.registrationCode ?? createRegistrationCode(request.submittedAt),
         email: request.email,
         full_name: request.fullName,
         requested_unit_name: request.requestedUnitName,
@@ -410,6 +622,13 @@ async function insertSupabaseRegistrationRequest(
         social_bureau_review_status: profile?.socialBureauReviewStatus ?? "not_sent",
         social_bureau_reviewed_at: profile?.socialBureauReviewedAt ?? null,
         social_bureau_review_note: profile?.socialBureauReviewNote ?? null,
+        auth_invite_status: profile?.authInviteStatus ?? "not_sent",
+        auth_invited_at: profile?.authInvitedAt ?? null,
+        auth_activated_at: profile?.authActivatedAt ?? null,
+        profile_completion_status: profileCompletionStatus,
+        profile_submitted_at: profile?.profileSubmittedAt ?? (profileCompletionStatus === "submitted" ? request.submittedAt : null),
+        profile_reviewed_at: profile?.profileReviewedAt ?? null,
+        profile_return_reason: profile?.profileReturnReason ?? null,
       })
       .select("*")
       .single();
@@ -469,7 +688,10 @@ function mergeRegistrationRequests(
   });
 }
 
-function mapRegistrationRow(row: WorkspaceRegistrationRequestRow): UserRegistrationRequest {
+function mapRegistrationRow(
+  row: WorkspaceRegistrationRequestRow,
+  remittanceProfile?: VisitorProfileRemittanceRow,
+): UserRegistrationRequest {
   const fallbackWorkspace = getCurrentWorkspace();
   const workerGroup = normalizeWorkerGroup(row.worker_group);
   const status = normalizeRegistrationStatus(row.status);
@@ -508,6 +730,27 @@ function mapRegistrationRow(row: WorkspaceRegistrationRequestRow): UserRegistrat
             socialBureauReviewStatus,
             socialBureauReviewedAt: row.social_bureau_reviewed_at,
             socialBureauReviewNote: row.social_bureau_review_note,
+            registrationCode: row.registration_code,
+            authInviteStatus: normalizeAuthInviteStatus(row.auth_invite_status),
+            authInvitedAt: row.auth_invited_at,
+            authActivatedAt: row.auth_activated_at,
+            profileCompletionStatus: normalizeProfileCompletionStatus(row.profile_completion_status),
+            profileSubmittedAt: row.profile_submitted_at,
+            profileReviewedAt: row.profile_reviewed_at,
+            profileReturnReason: row.profile_return_reason,
+            visitorCode: row.visitor_code,
+            qrCodePayload: row.qr_code_payload,
+            bankAccountLast5: remittanceProfile?.bank_account_last5 ?? null,
+            bankName: remittanceProfile?.bank_name ?? null,
+            bankCode: remittanceProfile?.bank_code ?? null,
+            bankBranchName: remittanceProfile?.bank_branch_name ?? null,
+            bankAccountName: remittanceProfile?.bank_account_name ?? null,
+            passbookCoverUrl: remittanceProfile?.passbook_cover_url ?? null,
+            passbookUploadedAt: remittanceProfile?.passbook_uploaded_at ?? null,
+            remittanceReviewStatus: normalizeRemittanceReviewStatus(
+              remittanceProfile?.remittance_review_status ?? null,
+            ),
+            remittanceReady: Boolean(remittanceProfile?.remittance_ready),
             note: null,
           }
         : undefined,
@@ -569,8 +812,93 @@ function normalizeReviewStatus(value: string | null) {
   return "not_sent";
 }
 
+function normalizeAuthInviteStatus(value: string | null) {
+  if (value === "not_sent" || value === "sent" || value === "activated" || value === "failed") {
+    return value;
+  }
+
+  return "not_sent";
+}
+
+function normalizeProfileCompletionStatus(value: string | null) {
+  if (value === "incomplete" || value === "submitted" || value === "verified" || value === "returned") {
+    return value;
+  }
+
+  return "incomplete";
+}
+
+function normalizeRemittanceReviewStatus(value: string | null): VisitorRemittanceReviewStatus {
+  if (value === "pending" || value === "approved" || value === "rejected") {
+    return value;
+  }
+
+  return "pending";
+}
+
+function getRowProfileCompletionStatus(row: WorkspaceRegistrationRequestRow) {
+  const existingStatus = normalizeProfileCompletionStatus(row.profile_completion_status);
+  if (existingStatus === "verified" || existingStatus === "returned") {
+    return existingStatus;
+  }
+
+  return row.full_name &&
+    row.email &&
+    row.national_id &&
+    row.phone &&
+    row.headshot_processed_url
+    ? "submitted"
+    : "incomplete";
+}
+
+function createRegistrationCode(submittedAt: string) {
+  const date = new Date(submittedAt);
+  const compactTimestamp = Number.isNaN(date.getTime())
+    ? Date.now().toString(36).toUpperCase()
+    : date.getTime().toString(36).toUpperCase();
+  return `REG-115-YH-${compactTimestamp}`;
+}
+
+async function createVisitorCode(
+  supabase: unknown,
+  workspaceId: string,
+  workerType: "civil_affairs" | "social_affairs",
+  fallbackSeed: string,
+) {
+  const typeCode = workerType === "civil_affairs" ? "CIV" : "SOC";
+  const prefix = `EV-115-YH-${typeCode}`;
+
+  try {
+    const { data, error } = await (supabase as VisitorCodeLookupClient)
+      .from("visitor_profiles")
+      .select("visitor_code")
+      .eq("workspace_id", workspaceId)
+      .eq("worker_type", workerType);
+
+    if (!error && data) {
+      const nextSequence =
+        data.reduce((max, item) => {
+          const match = item.visitor_code?.match(/-(\d+)$/);
+          const value = match ? Number(match[1]) : 0;
+          return Number.isFinite(value) ? Math.max(max, value) : max;
+        }, 0) + 1;
+      return `${prefix}-${String(nextSequence).padStart(4, "0")}`;
+    }
+  } catch {
+    // Fallback below keeps review from failing if code lookup is unavailable.
+  }
+
+  const suffix = fallbackSeed.replace(/[^0-9]/g, "").slice(-4) || Date.now().toString().slice(-4);
+  return `${prefix}-${suffix.padStart(4, "0")}`;
+}
+
+function createVisitorQrCodePayload(visitorCode: string) {
+  return `https://eldervisit.netlify.app/verify/visitor/${visitorCode}`;
+}
+
 type WorkspaceRegistrationRequestRow = {
   id: string;
+  account_id: string | null;
   email: string;
   full_name: string;
   requested_unit_name: string | null;
@@ -598,6 +926,16 @@ type WorkspaceRegistrationRequestRow = {
   social_bureau_review_status: string;
   social_bureau_reviewed_at: string | null;
   social_bureau_review_note: string | null;
+  registration_code: string | null;
+  auth_invite_status: string | null;
+  auth_invited_at: string | null;
+  auth_activated_at: string | null;
+  profile_completion_status: string | null;
+  profile_submitted_at: string | null;
+  profile_reviewed_at: string | null;
+  profile_return_reason: string | null;
+  visitor_code: string | null;
+  qr_code_payload: string | null;
 };
 
 type RegistrationRequestClient = {
@@ -606,6 +944,43 @@ type RegistrationRequestClient = {
       order(column: string, options: { ascending: boolean }): {
         limit(count: number): Promise<{
           data: WorkspaceRegistrationRequestRow[] | null;
+          error: unknown;
+        }>;
+      };
+    };
+  };
+};
+
+type VisitorProfileRemittanceRow = {
+  account_id: string;
+  bank_account_last5: string | null;
+  bank_name: string | null;
+  bank_code: string | null;
+  bank_branch_name: string | null;
+  bank_account_name: string | null;
+  passbook_cover_url: string | null;
+  passbook_uploaded_at: string | null;
+  remittance_review_status: string | null;
+  remittance_ready: boolean | null;
+};
+
+type VisitorProfileRemittanceClient = {
+  from(table: "visitor_profiles"): {
+    select(query: string): {
+      in(column: string, values: string[]): Promise<{
+        data: VisitorProfileRemittanceRow[] | null;
+        error: unknown;
+      }>;
+    };
+  };
+};
+
+type RegistrationRequestByIdClient = {
+  from(table: "workspace_registration_requests"): {
+    select(query: string): {
+      eq(column: string, value: string): {
+        single(): Promise<{
+          data: WorkspaceRegistrationRequestRow | null;
           error: unknown;
         }>;
       };
@@ -657,6 +1032,17 @@ type AccountWriteClient = {
   };
 };
 
+type AccountAuthUserUpdateClient = {
+  from(table: "accounts"): {
+    update(row: Record<string, unknown>): {
+      eq(column: string, value: string): Promise<{
+        data: unknown;
+        error: unknown;
+      }>;
+    };
+  };
+};
+
 type WorkspaceMembershipWriteClient = {
   from(table: "workspace_memberships"): {
     upsert(row: Record<string, unknown>, options: { onConflict: string }): Promise<{
@@ -673,7 +1059,7 @@ type VisitorProfileReviewClient = {
         eq(column: string, value: string): {
           limit(count: number): {
             maybeSingle(): Promise<{
-              data: { id: string } | null;
+              data: { id: string; visitor_code: string | null } | null;
               error: unknown;
             }>;
           };
@@ -690,6 +1076,19 @@ type VisitorProfileReviewClient = {
       data: unknown;
       error: unknown;
     }>;
+  };
+};
+
+type VisitorCodeLookupClient = {
+  from(table: "visitor_profiles"): {
+    select(query: string): {
+      eq(column: string, value: string): {
+        eq(column: string, value: string): Promise<{
+          data: Array<{ visitor_code: string | null }> | null;
+          error: unknown;
+        }>;
+      };
+    };
   };
 };
 

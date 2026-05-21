@@ -149,6 +149,16 @@ export type Database = {
           social_bureau_review_status: string;
           social_bureau_reviewed_at: string | null;
           social_bureau_review_note: string | null;
+          registration_code: string | null;
+          auth_invite_status: string;
+          auth_invited_at: string | null;
+          auth_activated_at: string | null;
+          profile_completion_status: string;
+          profile_submitted_at: string | null;
+          profile_reviewed_at: string | null;
+          profile_return_reason: string | null;
+          visitor_code: string | null;
+          qr_code_payload: string | null;
         };
         Insert: {
           id?: string;
@@ -183,6 +193,16 @@ export type Database = {
           social_bureau_review_status?: string;
           social_bureau_reviewed_at?: string | null;
           social_bureau_review_note?: string | null;
+          registration_code?: string | null;
+          auth_invite_status?: string;
+          auth_invited_at?: string | null;
+          auth_activated_at?: string | null;
+          profile_completion_status?: string;
+          profile_submitted_at?: string | null;
+          profile_reviewed_at?: string | null;
+          profile_return_reason?: string | null;
+          visitor_code?: string | null;
+          qr_code_payload?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["workspace_registration_requests"]["Insert"]>;
       };

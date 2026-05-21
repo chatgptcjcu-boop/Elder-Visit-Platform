@@ -16,6 +16,7 @@ import {
   ServerCog,
   Map,
   UserCog,
+  UserRound,
   Workflow,
 } from "lucide-react";
 import type { Capability } from "@/lib/domain/types";
@@ -24,6 +25,7 @@ export type NavKey =
   | "dashboard"
   | "tasks"
   | "drafts"
+  | "profile"
   | "cases"
   | "assignments"
   | "audit"
@@ -71,6 +73,14 @@ export const navItems: NavItem[] = [
     label: "草稿",
     href: "/visitor/drafts",
     icon: Files,
+    requiredCapabilities: ["visits.submit"],
+    group: "daily",
+  },
+  {
+    key: "profile",
+    label: "我的資料",
+    href: "/visitor/profile",
+    icon: UserRound,
     requiredCapabilities: ["visits.submit"],
     group: "daily",
   },

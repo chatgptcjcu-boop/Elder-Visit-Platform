@@ -1,5 +1,10 @@
 # PWA Offline Checklist
 
+## 繁體中文說明
+
+這份文件聚焦在離線使用行為，和 `docs/pwa-home-screen-review.md` 的桌面 icon / 安裝體驗不同。  
+前者看「離線後還能不能工作」，後者看「加入手機桌面後看起來像不像成熟 App」。
+
 ## Scope
 
 This checklist covers the current local PWA and offline draft behavior.
@@ -27,3 +32,7 @@ This checklist covers the current local PWA and offline draft behavior.
 - Offline submissions are not queued for later sync yet.
 - Attachments, photos, GPS, and signatures are represented by metadata only.
 - Service worker behavior can differ between localhost, Safari, and installed PWA contexts.
+
+## Related Review
+
+- For home-screen icons, manifest quality, and installability polish, also use `docs/pwa-home-screen-review.md`.

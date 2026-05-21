@@ -166,6 +166,12 @@ export type VisitorRegistrationWorkerGroup = "civil_affairs" | "social_affairs";
 
 export type VisitorRegistrationReviewStatus = "not_sent" | "pending" | "approved" | "rejected";
 
+export type VisitorAuthInviteStatus = "not_sent" | "sent" | "activated" | "failed";
+
+export type VisitorProfileCompletionStatus = "incomplete" | "submitted" | "verified" | "returned";
+
+export type VisitorRemittanceReviewStatus = "pending" | "approved" | "rejected";
+
 export type VisitorRegistrationProfile = {
   rootUnitName: string;
   departmentName: string;
@@ -186,6 +192,25 @@ export type VisitorRegistrationProfile = {
   socialBureauReviewStatus: VisitorRegistrationReviewStatus;
   socialBureauReviewedAt: string | null;
   socialBureauReviewNote: string | null;
+  registrationCode: string | null;
+  authInviteStatus: VisitorAuthInviteStatus;
+  authInvitedAt: string | null;
+  authActivatedAt: string | null;
+  profileCompletionStatus: VisitorProfileCompletionStatus;
+  profileSubmittedAt: string | null;
+  profileReviewedAt: string | null;
+  profileReturnReason: string | null;
+  visitorCode: string | null;
+  qrCodePayload: string | null;
+  bankAccountLast5: string | null;
+  bankName: string | null;
+  bankCode: string | null;
+  bankBranchName: string | null;
+  bankAccountName: string | null;
+  passbookCoverUrl: string | null;
+  passbookUploadedAt: string | null;
+  remittanceReviewStatus: VisitorRemittanceReviewStatus;
+  remittanceReady: boolean;
   note: string | null;
 };
 
@@ -209,6 +234,25 @@ export type VisitorRegistrationSubmission = Omit<
   | "socialBureauReviewStatus"
   | "socialBureauReviewedAt"
   | "socialBureauReviewNote"
+  | "registrationCode"
+  | "authInviteStatus"
+  | "authInvitedAt"
+  | "authActivatedAt"
+  | "profileCompletionStatus"
+  | "profileSubmittedAt"
+  | "profileReviewedAt"
+  | "profileReturnReason"
+  | "visitorCode"
+  | "qrCodePayload"
+  | "bankAccountLast5"
+  | "bankName"
+  | "bankCode"
+  | "bankBranchName"
+  | "bankAccountName"
+  | "passbookCoverUrl"
+  | "passbookUploadedAt"
+  | "remittanceReviewStatus"
+  | "remittanceReady"
 > & {
   fullName: string;
   email: string;
@@ -227,6 +271,14 @@ export type UserRegistrationDecision = {
 export type UserRegistrationDecisionResult = {
   requestId: string;
   status: UserRegistrationStatus;
+  message: string;
+  nextStep: string;
+};
+
+export type VisitorInvitationResult = {
+  requestId: string;
+  email: string;
+  status: VisitorAuthInviteStatus;
   message: string;
   nextStep: string;
 };

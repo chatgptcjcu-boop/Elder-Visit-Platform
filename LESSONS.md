@@ -36,3 +36,11 @@
 - **Rule:** Keep visitor registration fields aligned with the official roster first, then add product-only fields such as display name, headshot preview, and workflow status around that core.
 - **Evidence:** `components/workspace/users-panel.tsx`, `lib/domain/types.ts`, and `supabase/migrations/0026_visitor_registration_review.sql`.
 - **Added on:** 2026-05-20
+
+## Lesson: Visitor approval is not the same as login readiness
+
+- **Trigger:** Approved visitors appeared in management data but did not have a clear way to log in or complete their own profile.
+- **Cause:** Workspace approval, Supabase Auth invitation, profile completion, and assignment eligibility are separate states.
+- **Rule:** Track `auth_invite_status`, `profile_completion_status`, `visitor_code`, and `is_assignable` separately so administrators can see where each visitor is blocked.
+- **Evidence:** `docs/visitor-login-profile-completion-plan.md` and `supabase/migrations/0027_visitor_identity_profile_completion.sql`.
+- **Added on:** 2026-05-21

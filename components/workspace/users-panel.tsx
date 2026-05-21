@@ -7,7 +7,9 @@ import {
   CheckCircle2,
   Download,
   IdCard,
+  Mail,
   Plus,
+  RefreshCw,
   Save,
   Search,
   Trash2,
@@ -22,6 +24,7 @@ import { visitors as defaultVisitors } from "@/lib/domain/assignments";
 import type {
   UserRegistrationDecisionResult,
   UserRegistrationRequest,
+  VisitorInvitationResult,
   VisitorRegistrationSubmission,
   VisitorRegistrationSubmissionResult,
   VisitorRegistrationWorkerGroup,
@@ -308,7 +311,54 @@ export function UsersPanel() {
             )}
           </section>
 
-          <ApprovedVisitorRegistry requests={approvedRequests} />
+          <ApprovedVisitorRegistry
+            requests={approvedRequests}
+            onInvited={(invitation) => {
+              setPayload((current) =>
+                current
+                  ? {
+                      ...current,
+                      registrationRequests: current.registrationRequests.map((request) =>
+                        request.id === invitation.requestId && request.visitorRegistrationProfile
+                          ? {
+                              ...request,
+                              visitorRegistrationProfile: {
+                                ...request.visitorRegistrationProfile,
+                                authInviteStatus: invitation.status,
+                                authInvitedAt:
+                                  invitation.status === "sent"
+                                    ? new Date().toISOString()
+                                    : request.visitorRegistrationProfile.authInvitedAt,
+                              },
+                            }
+                          : request,
+                      ),
+                    }
+                  : current,
+              );
+            }}
+            onVerified={(requestId) => {
+              setPayload((current) =>
+                current
+                  ? {
+                      ...current,
+                      registrationRequests: current.registrationRequests.map((request) =>
+                        request.id === requestId && request.visitorRegistrationProfile
+                          ? {
+                              ...request,
+                              visitorRegistrationProfile: {
+                                ...request.visitorRegistrationProfile,
+                                profileCompletionStatus: "verified",
+                                profileReviewedAt: new Date().toISOString(),
+                              },
+                            }
+                          : request,
+                      ),
+                    }
+                  : current,
+              );
+            }}
+          />
 
           <VisitorQualificationManager
             profiles={visitorProfiles}
@@ -394,6 +444,26 @@ const reviewStatusLabels: Record<string, string> = {
   rejected: "不通過",
 };
 
+const inviteStatusLabels: Record<string, string> = {
+  not_sent: "尚未發送",
+  sent: "已發送",
+  activated: "已啟用",
+  failed: "發送失敗",
+};
+
+const profileStatusLabels: Record<string, string> = {
+  incomplete: "待補資料",
+  submitted: "待管理者確認",
+  verified: "已確認可派案",
+  returned: "退回補件",
+};
+
+const remittanceStatusLabels: Record<string, string> = {
+  pending: "待確認",
+  approved: "已確認",
+  rejected: "退回補件",
+};
+
 function ReviewMetric({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-md border bg-background p-3">
@@ -403,9 +473,20 @@ function ReviewMetric({ label, value }: { label: string; value: number }) {
   );
 }
 
-function ApprovedVisitorRegistry({ requests }: { requests: UserRegistrationRequest[] }) {
+function ApprovedVisitorRegistry({
+  requests,
+  onInvited,
+  onVerified,
+}: {
+  requests: UserRegistrationRequest[];
+  onInvited: (result: VisitorInvitationResult) => void;
+  onVerified: (requestId: string) => void;
+}) {
   const [query, setQuery] = useState("");
   const [workerGroup, setWorkerGroup] = useState<"all" | VisitorRegistrationWorkerGroup>("all");
+  const [invitingRequestId, setInvitingRequestId] = useState<string | null>(null);
+  const [verifyingRequestId, setVerifyingRequestId] = useState<string | null>(null);
+  const [inviteMessage, setInviteMessage] = useState<string | null>(null);
   const filteredRequests = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
@@ -421,6 +502,8 @@ function ApprovedVisitorRegistry({ requests }: { requests: UserRegistrationReque
         profile?.jobTitle,
         profile?.phone,
         profile?.visitorCertificateNo,
+        profile?.registrationCode,
+        profile?.visitorCode,
       ]
         .filter(Boolean)
         .join(" ")
@@ -432,12 +515,77 @@ function ApprovedVisitorRegistry({ requests }: { requests: UserRegistrationReque
   const photoReadyCount = filteredRequests.filter(
     (request) => request.visitorRegistrationProfile?.headshotProcessedUrl,
   ).length;
+  const inviteSentCount = filteredRequests.filter(
+    (request) => request.visitorRegistrationProfile?.authInviteStatus === "sent",
+  ).length;
+  const verifiedCount = filteredRequests.filter(
+    (request) => request.visitorRegistrationProfile?.profileCompletionStatus === "verified",
+  ).length;
+  const remittanceReadyCount = filteredRequests.filter(
+    (request) => request.visitorRegistrationProfile?.remittanceReady,
+  ).length;
+
+  async function inviteVisitor(request: UserRegistrationRequest) {
+    setInvitingRequestId(request.id);
+    setInviteMessage(null);
+
+    try {
+      const response = await fetch("/api/users/invite-approved-visitor", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ requestId: request.id }),
+      });
+      const json = (await response.json()) as {
+        data?: VisitorInvitationResult;
+        error?: { message?: string };
+      };
+
+      if (!response.ok || !json.data) {
+        setInviteMessage(json.error?.message ?? "登入邀請沒有完成，請稍後再試。");
+        return;
+      }
+
+      onInvited(json.data);
+      setInviteMessage(`${json.data.message} ${json.data.nextStep}`);
+    } finally {
+      setInvitingRequestId(null);
+    }
+  }
+
+  async function verifyVisitorProfile(request: UserRegistrationRequest) {
+    setVerifyingRequestId(request.id);
+    setInviteMessage(null);
+
+    try {
+      const response = await fetch("/api/users/verify-visitor-profile", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ requestId: request.id }),
+      });
+      const json = (await response.json()) as {
+        data?: { message?: string; nextStep?: string };
+        error?: { message?: string };
+      };
+
+      if (!response.ok || !json.data) {
+        setInviteMessage(json.error?.message ?? "確認可派案沒有完成，請稍後再試。");
+        return;
+      }
+
+      onVerified(request.id);
+      setInviteMessage(`${json.data.message ?? "訪員資料已確認。"} ${json.data.nextStep ?? ""}`);
+    } finally {
+      setVerifyingRequestId(null);
+    }
+  }
 
   function exportRosterCsv() {
     const rows = filteredRequests.map((request, index) => {
       const profile = request.visitorRegistrationProfile;
       return {
         序號: String(index + 1),
+        註冊申請編號: profile?.registrationCode ?? "",
+        訪員正式編碼: profile?.visitorCode ?? "",
         顯示名稱: profile?.displayName ?? request.fullName,
         姓名: request.fullName,
         信箱: request.email,
@@ -453,6 +601,16 @@ function ApprovedVisitorRegistry({ requests }: { requests: UserRegistrationReque
         教育訓練日期: profile?.trainingCompletedAt ?? "",
         訪員證號: profile?.visitorCertificateNo ?? "",
         照片狀態: profile?.headshotProcessedUrl ? "有照片" : "缺照片",
+        登入邀請狀態: inviteStatusLabels[profile?.authInviteStatus ?? "not_sent"],
+        資料補完狀態: profile?.profileCompletionStatus ?? "incomplete",
+        匯款審核狀態: remittanceStatusLabels[profile?.remittanceReviewStatus ?? "pending"],
+        銀行名稱: profile?.bankName ?? "",
+        銀行代碼: profile?.bankCode ?? "",
+        分行名稱: profile?.bankBranchName ?? "",
+        戶名: profile?.bankAccountName ?? "",
+        帳號末五碼: profile?.bankAccountLast5 ?? "",
+        存摺附件: profile?.passbookCoverUrl ? "已上傳" : "未上傳",
+        QRCode: profile?.qrCodePayload ?? "",
         審核通過時間: profile?.socialBureauReviewedAt ?? request.submittedAt,
       };
     });
@@ -536,11 +694,19 @@ function ApprovedVisitorRegistry({ requests }: { requests: UserRegistrationReque
         </div>
       </div>
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-3">
+      <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
         <ReviewMetric label="目前篩選筆數" value={filteredRequests.length} />
         <ReviewMetric label="已處理照片" value={photoReadyCount} />
-        <ReviewMetric label="缺照片" value={Math.max(filteredRequests.length - photoReadyCount, 0)} />
+        <ReviewMetric label="已發送邀請" value={inviteSentCount} />
+        <ReviewMetric label="匯款可用" value={remittanceReadyCount} />
+        <ReviewMetric label="可派案" value={verifiedCount} />
       </div>
+
+      {inviteMessage && (
+        <div className="mt-4 rounded-md border border-primary/20 bg-primary/5 p-3 text-sm text-primary">
+          {inviteMessage}
+        </div>
+      )}
 
       <div className="mt-4 grid gap-2 lg:grid-cols-[1fr_220px]">
         <label className="relative block">
@@ -596,13 +762,53 @@ function ApprovedVisitorRegistry({ requests }: { requests: UserRegistrationReque
                     {profile?.departmentName ?? "未填科室"} ·{" "}
                     {profile ? normalizedJobTitle(profile) : "未填職稱"}
                   </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    訪員編碼：{profile?.visitorCode ?? "審核後待產生"}
+                  </p>
                 </div>
               </div>
               <div className="mt-3 grid gap-2 rounded-md bg-secondary/50 p-3 text-sm sm:grid-cols-2">
                 <p>手機：{profile?.phone ?? "未填"}</p>
                 <p>訪員證：{profile?.visitorCertificateNo ?? "待補"}</p>
                 <p>訓練：{profile?.trainingCompleted ? "已完成" : "未完成"}</p>
-                <p>照片：{profile?.headshotProcessedUrl ? "有照片" : "缺照片"}</p>
+                <p>登入邀請：{inviteStatusLabels[profile?.authInviteStatus ?? "not_sent"]}</p>
+                <p>資料確認：{profileStatusLabels[profile?.profileCompletionStatus ?? "incomplete"]}</p>
+                <p>匯款審核：{remittanceStatusLabels[profile?.remittanceReviewStatus ?? "pending"]}</p>
+                <p>存摺：{profile?.passbookCoverUrl ? "已上傳" : "未上傳"}</p>
+              </div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <Button
+                  type="button"
+                  variant={profile?.authInviteStatus === "sent" ? "outline" : "default"}
+                  className="w-full"
+                  disabled={invitingRequestId === request.id}
+                  onClick={() => inviteVisitor(request)}
+                >
+                  {profile?.authInviteStatus === "sent" ? (
+                    <RefreshCw className="h-4 w-4" />
+                  ) : (
+                    <Mail className="h-4 w-4" />
+                  )}
+                  {invitingRequestId === request.id
+                    ? "發送中"
+                    : profile?.authInviteStatus === "sent"
+                      ? "重寄邀請"
+                      : "發送邀請"}
+                </Button>
+                <Button
+                  type="button"
+                  variant={profile?.profileCompletionStatus === "verified" ? "outline" : "default"}
+                  className="w-full"
+                  disabled={verifyingRequestId === request.id}
+                  onClick={() => verifyVisitorProfile(request)}
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  {verifyingRequestId === request.id
+                    ? "確認中"
+                    : profile?.profileCompletionStatus === "verified"
+                      ? "已可派案"
+                      : "確認可派案"}
+                </Button>
               </div>
               <p className="mt-2 break-all text-xs text-muted-foreground">
                 {profile?.officialEmail ?? request.email}
@@ -618,7 +824,7 @@ function ApprovedVisitorRegistry({ requests }: { requests: UserRegistrationReque
       </div>
 
       <div className="mt-4 hidden overflow-x-auto rounded-lg border lg:block">
-        <table className="w-full min-w-[960px] border-collapse text-left text-sm">
+        <table className="w-full min-w-[1120px] border-collapse text-left text-sm">
           <thead className="bg-secondary text-muted-foreground">
             <tr>
               <th className="px-3 py-3 font-medium">姓名 / 暱稱</th>
@@ -626,8 +832,9 @@ function ApprovedVisitorRegistry({ requests }: { requests: UserRegistrationReque
               <th className="px-3 py-3 font-medium">科室職稱</th>
               <th className="px-3 py-3 font-medium">聯絡方式</th>
               <th className="px-3 py-3 font-medium">訓練 / 證號</th>
-              <th className="px-3 py-3 font-medium">照片</th>
-              <th className="px-3 py-3 font-medium">審核狀態</th>
+              <th className="px-3 py-3 font-medium">匯款資料</th>
+              <th className="px-3 py-3 font-medium">編碼 / 邀請</th>
+              <th className="px-3 py-3 font-medium">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -663,24 +870,61 @@ function ApprovedVisitorRegistry({ requests }: { requests: UserRegistrationReque
                     </p>
                   </td>
                   <td className="px-3 py-3">
-                    {profile?.headshotProcessedUrl ? (
-                      <div className="flex items-center gap-2">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={profile.headshotProcessedUrl}
-                          alt={`${request.fullName} 證件照`}
-                          className="h-12 w-9 rounded border object-cover"
-                        />
-                        <span className="text-xs text-primary">有照片</span>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">缺照片</span>
-                    )}
+                    <p>{remittanceStatusLabels[profile?.remittanceReviewStatus ?? "pending"]}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {profile?.bankName || profile?.bankCode
+                        ? `${profile?.bankName ?? "未填銀行"} ${profile?.bankCode ?? ""}`.trim()
+                        : "銀行待補"}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {profile?.bankAccountLast5 ? `末五碼 ${profile.bankAccountLast5}` : "帳號末五碼待補"} ·{" "}
+                      {profile?.passbookCoverUrl ? "存摺已上傳" : "存摺待補"}
+                    </p>
                   </td>
                   <td className="px-3 py-3">
-                    <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
-                      已通過
-                    </span>
+                    <p>{profile?.visitorCode ?? "待產生"}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {inviteStatusLabels[profile?.authInviteStatus ?? "not_sent"]}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {profileStatusLabels[profile?.profileCompletionStatus ?? "incomplete"]}
+                    </p>
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={profile?.authInviteStatus === "sent" ? "outline" : "default"}
+                        disabled={invitingRequestId === request.id}
+                        onClick={() => inviteVisitor(request)}
+                      >
+                        {profile?.authInviteStatus === "sent" ? (
+                          <RefreshCw className="h-4 w-4" />
+                        ) : (
+                          <Mail className="h-4 w-4" />
+                        )}
+                        {invitingRequestId === request.id
+                          ? "發送中"
+                          : profile?.authInviteStatus === "sent"
+                            ? "重寄"
+                            : "邀請"}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={profile?.profileCompletionStatus === "verified" ? "outline" : "default"}
+                        disabled={verifyingRequestId === request.id}
+                        onClick={() => verifyVisitorProfile(request)}
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        {verifyingRequestId === request.id
+                          ? "確認中"
+                          : profile?.profileCompletionStatus === "verified"
+                            ? "可派案"
+                            : "確認"}
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               );
