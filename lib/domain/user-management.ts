@@ -628,7 +628,7 @@ async function insertSupabaseRegistrationRequest(
       return {
         request: null,
         source: "supabase",
-        warning: "Supabase 寫入失敗，請確認 0026 migration、資料表欄位與 service role key。",
+        warning: formatSupabaseWriteError(error),
       };
     }
 
@@ -637,17 +637,43 @@ async function insertSupabaseRegistrationRequest(
       source: "supabase",
       warning: null,
     };
-  } catch {
+  } catch (error) {
     return {
       request: null,
       source: "supabase",
-      warning: "Supabase 管理端環境尚未設定，註冊資料未寫入。請確認正式環境變數。",
+      warning:
+        error instanceof Error
+          ? `Supabase 管理端連線失敗：${error.message}`
+          : "Supabase 管理端環境尚未設定，註冊資料未寫入。請確認正式環境變數。",
     };
   }
 }
 
 function isSupportedCompactImageDataUrl(value: string) {
   return value.startsWith("data:image/") && value.length <= 1_000_000;
+}
+
+function formatSupabaseWriteError(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return "Supabase 寫入失敗，請確認 0026/0027/0028 migration、資料表欄位與 service role key。";
+  }
+
+  const supabaseError = error as {
+    message?: string;
+    code?: string;
+    details?: string;
+    hint?: string;
+  };
+  const parts = [
+    supabaseError.message,
+    supabaseError.code ? `代碼：${supabaseError.code}` : null,
+    supabaseError.details ? `細節：${supabaseError.details}` : null,
+    supabaseError.hint ? `提示：${supabaseError.hint}` : null,
+  ].filter(Boolean);
+
+  return parts.length > 0
+    ? `Supabase 寫入失敗：${parts.join("；")}`
+    : "Supabase 寫入失敗，請確認 0026/0027/0028 migration、資料表欄位與 service role key。";
 }
 
 async function getSupabaseActiveWorkspace() {
