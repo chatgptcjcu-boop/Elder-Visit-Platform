@@ -273,6 +273,7 @@ export type UserRegistrationDecisionResult = {
   status: UserRegistrationStatus;
   message: string;
   nextStep: string;
+  source?: "supabase" | "memory_fallback";
 };
 
 export type VisitorInvitationResult = {

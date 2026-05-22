@@ -223,7 +223,10 @@ export async function reviewRegistration(
 ): Promise<UserRegistrationDecisionResult> {
   const supabaseResult = await reviewSupabaseRegistration(decision);
   if (supabaseResult) {
-    return supabaseResult;
+    return {
+      ...supabaseResult,
+      source: "supabase",
+    };
   }
 
   const request = registrationRequests.find((item) => item.id === decision.requestId);
@@ -234,6 +237,7 @@ export async function reviewRegistration(
       status: "rejected",
       message: "找不到註冊申請。",
       nextStep: "請重新整理使用者管理頁。",
+      source: "memory_fallback",
     };
   }
 
@@ -242,7 +246,8 @@ export async function reviewRegistration(
       requestId: request.id,
       status: "rejected",
       message: `${request.fullName} 的加入申請已退回。`,
-      nextStep: "系統會保留審核紀錄，不建立 Workspace 成員關聯。",
+      nextStep: "目前未連上正式 Supabase 寫入，畫面會先保留本次操作結果。",
+      source: "memory_fallback",
     };
   }
 
@@ -250,7 +255,9 @@ export async function reviewRegistration(
     requestId: request.id,
     status: "approved",
     message: `${request.fullName} 已加入 ${request.requestedWorkspaceName}。`,
-    nextStep: `建立 workspace_membership，角色為 ${decision.roleKey}，下次登入依此角色顯示畫面。`,
+    nextStep:
+      "目前未連上正式 Supabase 寫入，畫面會先保留本次操作結果；正式大量使用前請確認 Cloudflare 的 Supabase service role key。",
+    source: "memory_fallback",
   };
 }
 

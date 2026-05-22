@@ -179,7 +179,9 @@ export function UsersPanel() {
             }
           : current,
       );
-      await loadUsers();
+      if (json.data.source === "supabase") {
+        await loadUsers();
+      }
     } finally {
       setReviewingRequestId(null);
     }
