@@ -20,9 +20,21 @@ export async function POST(request: NextRequest) {
   const forbidden = requireCapability(request, "users.review");
   if (forbidden) return forbidden;
 
-  const decision = (await request.json()) as UserRegistrationDecision;
+  try {
+    const decision = (await request.json()) as UserRegistrationDecision;
 
-  return NextResponse.json({
-    data: await reviewRegistration(decision),
-  });
+    return NextResponse.json({
+      data: await reviewRegistration(decision),
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: {
+          code: "REGISTRATION_REVIEW_FAILED",
+          message: error instanceof Error ? error.message : "審核資料寫入失敗。",
+        },
+      },
+      { status: 500 },
+    );
+  }
 }

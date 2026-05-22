@@ -302,7 +302,8 @@ function sanitizeBankLast5(value: string | undefined, fallback: string | null) {
 
 function sanitizePassbookDataUrl(value: string | undefined, fallback: string | null) {
   if (typeof value !== "string" || !value.trim()) return fallback;
-  if (!value.startsWith("data:image/") && !value.startsWith("data:application/pdf")) return fallback;
+  if (!value.startsWith("data:image/")) return fallback;
+  if (value.length > 1_500_000) return fallback;
   return value;
 }
 

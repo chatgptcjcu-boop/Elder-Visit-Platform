@@ -1638,6 +1638,7 @@ export function VisitorRegistrationForm({
   const [form, setForm] = useState<VisitorRegistrationSubmission>(initialForm);
   const [headshotProcessing, setHeadshotProcessing] = useState(false);
   const [headshotMessage, setHeadshotMessage] = useState<string | null>(null);
+  const [submitMessage, setSubmitMessage] = useState<string | null>(null);
   const displayName = createVisitorDisplayName(form);
   const headshotInstruction = "請到牆壁白色的背景處拍攝，臉部看向鏡頭，保持光線明亮。";
   const canSubmit = Boolean(
@@ -1645,7 +1646,8 @@ export function VisitorRegistrationForm({
       form.email.trim() &&
       form.nationalId.trim() &&
       form.officialEmail.trim() &&
-      form.phone.trim(),
+      form.phone.trim() &&
+      form.headshotProcessedUrl,
   );
 
   function updateForm(patch: Partial<VisitorRegistrationSubmission>) {
@@ -1656,42 +1658,18 @@ export function VisitorRegistrationForm({
     if (!file) return;
 
     setHeadshotProcessing(true);
-    setHeadshotMessage("正在產生白底一寸證件照...");
+    setHeadshotMessage("正在產生小尺寸證件照預覽...");
 
     try {
       const dataUrl = await readFileAsDataUrl(file);
+      const previewDataUrl = await createLocalHeadshotPreview(dataUrl);
       updateForm({
         headshotOriginalUrl: dataUrl,
-        headshotProcessedUrl: dataUrl,
+        headshotProcessedUrl: previewDataUrl,
       });
-
-      const response = await fetch("/api/users/headshot-process", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ imageDataUrl: dataUrl }),
-      });
-      const json = (await response.json()) as {
-        data?: { processedDataUrl: string; note: string };
-        error?: { message?: string };
-      };
-
-      if (response.ok && json.data?.processedDataUrl) {
-        updateForm({
-          headshotOriginalUrl: dataUrl,
-          headshotProcessedUrl: json.data.processedDataUrl,
-        });
-        setHeadshotMessage("已完成伺服器端白底一寸證件照處理。");
-        return;
-      }
-
-      const fallbackDataUrl = await createLocalHeadshotPreview(dataUrl);
-      updateForm({
-        headshotOriginalUrl: dataUrl,
-        headshotProcessedUrl: fallbackDataUrl,
-      });
-      setHeadshotMessage(json.error?.message ?? "伺服器處理失敗，已改用本機白底裁切預覽。");
+      setHeadshotMessage("已選擇自拍照，送出後會正式寫入註冊資料。AI 去背與修圖功能後續再接。");
     } catch {
-      setHeadshotMessage("照片處理失敗，請重新上傳較清楚的自拍照。");
+      setHeadshotMessage("照片讀取失敗，請重新拍攝或選擇較清楚的自拍照。");
     } finally {
       setHeadshotProcessing(false);
     }
@@ -1711,22 +1689,25 @@ export function VisitorRegistrationForm({
   }
 
   async function submit() {
+    setSubmitMessage(null);
     const response = await fetch("/api/users/visitor-registration", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(form),
     });
-    const json = (await response.json()) as { data?: VisitorRegistrationSubmissionResult };
+    const json = (await response.json()) as {
+      data?: VisitorRegistrationSubmissionResult;
+      error?: { message?: string };
+    };
 
-    if (json.data?.request) {
-      onSubmitted(
-        json.data.request,
-        json.data.source === "supabase"
-          ? `${json.data.message}（已正式寫入 Supabase）`
-          : `${json.data.message}（${json.data.warning ?? "目前為暫存資料"}）`,
-      );
-      setForm(initialForm);
+    if (!response.ok || !json.data?.request) {
+      setSubmitMessage(json.error?.message ?? "註冊資料送出失敗，請稍後再試。");
+      return;
     }
+
+    onSubmitted(json.data.request, `${json.data.message}（已正式寫入 Supabase）`);
+    setForm(initialForm);
+    setSubmitMessage(null);
   }
 
   return (
@@ -1955,7 +1936,7 @@ export function VisitorRegistrationForm({
               </p>
             )}
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
-              已接入後端白底一寸比例裁切與壓縮。若要真正 AI 去背換底，下一步需設定外部影像 AI 服務金鑰。
+              目前先保存拍照或手機相簿照片的小尺寸預覽；AI 去背與修圖功能後續再接。
             </p>
           </div>
         </div>
@@ -1963,13 +1944,18 @@ export function VisitorRegistrationForm({
 
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
-          必填：姓名、信箱、身分證字號、手機。未完成教育訓練者會停在承辦審核。
+          必填：姓名、信箱、身分證字號、手機、自拍證件照。未完成教育訓練者會停在承辦審核。
         </p>
         <Button type="button" disabled={!canSubmit} onClick={submit}>
           <Save className="h-4 w-4" />
           送出註冊
         </Button>
       </div>
+      {submitMessage && (
+        <p className="mt-3 rounded-md bg-secondary p-3 text-sm text-muted-foreground">
+          {submitMessage}
+        </p>
+      )}
     </section>
   );
 }
@@ -2045,7 +2031,7 @@ function createLocalHeadshotPreview(dataUrl: string) {
         canvas.height,
       );
 
-      resolve(canvas.toDataURL("image/jpeg", 0.9));
+      resolve(canvas.toDataURL("image/jpeg", 0.72));
     };
     image.onerror = () => reject(new Error("Image could not be loaded."));
     image.src = dataUrl;

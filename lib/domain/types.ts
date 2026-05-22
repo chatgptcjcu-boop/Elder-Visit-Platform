@@ -288,7 +288,7 @@ export type VisitorRegistrationSubmissionResult = {
   request: UserRegistrationRequest;
   message: string;
   nextStep: string;
-  source: "supabase" | "memory_fallback";
+  source: "supabase";
   warning: string | null;
 };
 

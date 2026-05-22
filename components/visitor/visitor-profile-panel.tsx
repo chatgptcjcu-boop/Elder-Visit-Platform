@@ -66,6 +66,7 @@ export function VisitorProfilePanel() {
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [passbookProcessing, setPassbookProcessing] = useState(false);
 
   useEffect(() => {
     async function loadProfile() {
@@ -110,14 +111,24 @@ export function VisitorProfilePanel() {
   async function handlePassbookFile(file: File | undefined) {
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      setMessage("存摺檔案請小於 2MB，建議先截圖或壓縮後再上傳。");
+    if (!file.type.startsWith("image/")) {
+      setMessage("存摺資料目前請上傳照片或手機截圖；PDF 之後再納入附件管理。");
       return;
     }
 
-    const dataUrl = await readFileAsDataUrl(file);
-    updateForm({ passbookCoverUrl: dataUrl });
-    setMessage("已選擇存摺資料，請按「送出補充資料」保存。");
+    setPassbookProcessing(true);
+    setMessage("正在壓縮存摺照片，會轉成小尺寸黑白圖以節省空間...");
+
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      const compactDataUrl = await createCompactPassbookDataUrl(dataUrl);
+      updateForm({ passbookCoverUrl: compactDataUrl });
+      setMessage("已壓縮存摺照片，請按「送出補充資料」保存。");
+    } catch {
+      setMessage("存摺照片處理失敗，請重新拍攝或選擇較清楚的圖片。");
+    } finally {
+      setPassbookProcessing(false);
+    }
   }
 
   async function saveProfile() {
@@ -331,7 +342,7 @@ export function VisitorProfilePanel() {
                   <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
                     <div>
                       <p className="text-sm text-muted-foreground">
-                        可上傳存摺封面照片或 PDF。系統目前保存為附件資料，後續由承辦管理者確認匯款資料。
+                        可拍攝或選擇存摺封面照片。系統會自動縮小、轉黑白並壓縮保存，後續由承辦管理者確認匯款資料。
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         建議只提供匯款必要資訊，避免上傳不必要的個資頁面。
@@ -343,14 +354,16 @@ export function VisitorProfilePanel() {
                       <input
                         className="sr-only"
                         type="file"
-                        accept="image/*,application/pdf"
+                        accept="image/*"
+                        capture="environment"
+                        disabled={passbookProcessing}
                         onChange={(event) => void handlePassbookFile(event.target.files?.[0])}
                       />
                     </label>
                   </div>
                   {form.passbookCoverUrl && (
                     <div className="mt-3 rounded-md bg-secondary p-3 text-sm text-muted-foreground">
-                      已選擇存摺資料，送出後會交由承辦管理者確認。
+                      已選擇並壓縮存摺照片，送出後會交由承辦管理者確認。
                     </div>
                   )}
                 </div>
@@ -391,6 +404,42 @@ function readFileAsDataUrl(file: File) {
     reader.onload = () => resolve(String(reader.result));
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(file);
+  });
+}
+
+function createCompactPassbookDataUrl(dataUrl: string) {
+  return new Promise<string>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      const maxWidth = 900;
+      const maxHeight = 600;
+      const scale = Math.min(maxWidth / image.width, maxHeight / image.height, 1);
+      const width = Math.max(1, Math.round(image.width * scale));
+      const height = Math.max(1, Math.round(image.height * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext("2d");
+      if (!context) {
+        reject(new Error("Canvas is not available."));
+        return;
+      }
+
+      context.drawImage(image, 0, 0, width, height);
+      const imageData = context.getImageData(0, 0, width, height);
+      const pixels = imageData.data;
+      for (let index = 0; index < pixels.length; index += 4) {
+        const gray = Math.round(pixels[index] * 0.299 + pixels[index + 1] * 0.587 + pixels[index + 2] * 0.114);
+        const highContrast = gray > 220 ? 255 : gray < 60 ? 0 : gray;
+        pixels[index] = highContrast;
+        pixels[index + 1] = highContrast;
+        pixels[index + 2] = highContrast;
+      }
+      context.putImageData(imageData, 0, 0);
+      resolve(canvas.toDataURL("image/jpeg", 0.46));
+    };
+    image.onerror = () => reject(new Error("Image could not be loaded."));
+    image.src = dataUrl;
   });
 }
 

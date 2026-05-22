@@ -108,10 +108,15 @@ export const registrationRequests: UserRegistrationRequest[] = [
 export async function getUserManagementOverview() {
   const workspace = getCurrentWorkspace();
   const supabaseRequests = await getSupabaseRegistrationRequests();
+  const useSupabaseOnly = Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY,
+  );
 
   return {
     workspace,
-    registrationRequests: mergeRegistrationRequests(supabaseRequests, registrationRequests),
+    registrationRequests: useSupabaseOnly
+      ? supabaseRequests
+      : mergeRegistrationRequests(supabaseRequests, registrationRequests),
     flow: [
       "使用者建立帳號並完成 email 驗證。",
       "新訪員填寫清冊欄位：姓名、性別、身分證字號、民政/社政、職稱、公務信箱與教育訓練。",
@@ -155,6 +160,10 @@ function getInitialProfileCompletionStatus(submission: VisitorRegistrationSubmis
 export async function submitVisitorRegistration(
   submission: VisitorRegistrationSubmission,
 ): Promise<VisitorRegistrationSubmissionResult> {
+  if (!submission.headshotOriginalUrl || !submission.headshotProcessedUrl) {
+    throw new Error("請先拍攝或選擇自拍證件照後再送出註冊。");
+  }
+
   const displayName = createVisitorDisplayName(submission);
   const submittedAt = new Date().toISOString();
   const profileCompletionStatus = getInitialProfileCompletionStatus(submission);
@@ -203,18 +212,17 @@ export async function submitVisitorRegistration(
     },
   };
 
-  registrationRequests.unshift(request);
   const supabaseResult = await insertSupabaseRegistrationRequest(request);
+  if (!supabaseResult.request) {
+    throw new Error(supabaseResult.warning ?? "註冊資料寫入 Supabase 失敗。");
+  }
 
   return {
-    request: supabaseResult.request ?? request,
+    request: supabaseResult.request,
     message: `${displayName} 的訪員註冊資料已送出。`,
-    nextStep:
-      supabaseResult.source === "supabase"
-        ? "已正式寫入 Supabase，承辦管理者可在使用者管理頁審核。"
-        : "目前已暫存送出，請設定 SUPABASE_SERVICE_ROLE_KEY 後才會永久寫入 Supabase。",
-    source: supabaseResult.source,
-    warning: supabaseResult.warning,
+    nextStep: "已正式寫入 Supabase，承辦管理者可在使用者管理頁審核。",
+    source: "supabase",
+    warning: null,
   };
 }
 
@@ -228,37 +236,7 @@ export async function reviewRegistration(
       source: "supabase",
     };
   }
-
-  const request = registrationRequests.find((item) => item.id === decision.requestId);
-
-  if (!request) {
-    return {
-      requestId: decision.requestId,
-      status: "rejected",
-      message: "找不到註冊申請。",
-      nextStep: "請重新整理使用者管理頁。",
-      source: "memory_fallback",
-    };
-  }
-
-  if (decision.decision === "reject") {
-    return {
-      requestId: request.id,
-      status: "rejected",
-      message: `${request.fullName} 的加入申請已退回。`,
-      nextStep: "目前未連上正式 Supabase 寫入，畫面會先保留本次操作結果。",
-      source: "memory_fallback",
-    };
-  }
-
-  return {
-    requestId: request.id,
-    status: "approved",
-    message: `${request.fullName} 已加入 ${request.requestedWorkspaceName}。`,
-    nextStep:
-      "目前未連上正式 Supabase 寫入，畫面會先保留本次操作結果；正式大量使用前請確認 Cloudflare 的 Supabase service role key。",
-    source: "memory_fallback",
-  };
+  throw new Error("核准加入沒有寫入 Supabase，請確認註冊資料為正式資料庫資料。");
 }
 
 export async function inviteApprovedVisitor(
