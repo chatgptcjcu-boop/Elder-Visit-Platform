@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Archive, CheckCircle2, Database, TriangleAlert } from "lucide-react";
 import { PricingDashboard } from "@/components/manage/pricing-dashboard";
 import { ApiGovernancePanel } from "@/components/system/api-governance-panel";
@@ -25,10 +25,26 @@ const parameterTabs: Array<{ key: ParameterTab; label: string }> = [
 
 export function SystemStatusPanel() {
   const [activeTab, setActiveTab] = useState<ParameterTab>("runtime");
+  const [runtimeDiagnostics, setRuntimeDiagnostics] = useState<SystemRuntimeDiagnostics | null>(null);
   const status = getSystemStatus();
+  const adminStatus = runtimeDiagnostics?.supabaseAdmin;
   const ready = status.dataMode === "supabase_ready";
   const logSummary = getLogTieringSummary();
   const logWarnings = getLogTieringWarnings();
+
+  useEffect(() => {
+    async function loadRuntimeDiagnostics() {
+      try {
+        const response = await fetch("/api/system/status", { cache: "no-store" });
+        const json = (await response.json()) as { data?: SystemRuntimeDiagnostics };
+        setRuntimeDiagnostics(json.data ?? null);
+      } catch {
+        setRuntimeDiagnostics(null);
+      }
+    }
+
+    void loadRuntimeDiagnostics();
+  }, []);
 
   return (
     <div className="grid gap-4">
@@ -58,11 +74,11 @@ export function SystemStatusPanel() {
 
       {activeTab === "runtime" && (
         <>
-          <section className="grid gap-4 md:grid-cols-3">
+          <section className="grid gap-4 md:grid-cols-4">
             <StatusCard
               label="資料模式"
-              value={ready ? "Supabase 已就緒" : "示範資料"}
-              ok={ready}
+              value={adminStatus?.registrationTableReachable ? "Supabase 正式資料" : ready ? "Supabase 前端已設定" : "示範資料"}
+              ok={Boolean(adminStatus?.registrationTableReachable)}
             />
             <StatusCard
               label="Supabase URL"
@@ -74,6 +90,17 @@ export function SystemStatusPanel() {
               value={status.supabaseAnonKeyConfigured ? "已設定" : "未設定"}
               ok={status.supabaseAnonKeyConfigured}
             />
+            <StatusCard
+              label="Service Role"
+              value={
+                adminStatus
+                  ? adminStatus.serviceRoleConfigured
+                    ? "已設定"
+                    : "未設定"
+                  : "檢查中"
+              }
+              ok={Boolean(adminStatus?.serviceRoleConfigured)}
+            />
           </section>
 
           <section className="rounded-lg border bg-card p-4">
@@ -81,7 +108,11 @@ export function SystemStatusPanel() {
               <Database className="h-5 w-5 text-primary" />
               <h2 className="font-semibold">下一步連線條件</h2>
             </div>
-            {status.missing.length > 0 ? (
+            {adminStatus ? (
+              <div className="mt-4 rounded-md bg-secondary p-3 text-sm text-muted-foreground">
+                {adminStatus.message}
+              </div>
+            ) : status.missing.length > 0 ? (
               <div className="mt-4 rounded-md bg-secondary p-3 text-sm text-muted-foreground">
                 `.env.local` 仍缺少：{status.missing.join("、")}。設定後即可把 onboarding、workspace、訪查資料改接 Supabase。
               </div>
@@ -170,6 +201,15 @@ export function SystemStatusPanel() {
     </div>
   );
 }
+
+type SystemRuntimeDiagnostics = {
+  supabaseAdmin?: {
+    serviceRoleConfigured: boolean;
+    registrationTableReachable: boolean;
+    status: string;
+    message: string;
+  };
+};
 
 function StatusCard({ label, value, ok }: { label: string; value: string; ok: boolean }) {
   return (
