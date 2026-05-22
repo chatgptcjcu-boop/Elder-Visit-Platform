@@ -163,6 +163,12 @@ export async function submitVisitorRegistration(
   if (!submission.headshotOriginalUrl || !submission.headshotProcessedUrl) {
     throw new Error("請先拍攝或選擇自拍證件照後再送出註冊。");
   }
+  if (!isSupportedCompactImageDataUrl(submission.headshotOriginalUrl)) {
+    throw new Error("自拍原始照片格式或大小不符合保存規格，請重新拍攝或選擇較小的照片。");
+  }
+  if (!isSupportedCompactImageDataUrl(submission.headshotProcessedUrl)) {
+    throw new Error("自拍證件照預覽格式或大小不符合保存規格，請重新拍攝或選擇較小的照片。");
+  }
 
   const displayName = createVisitorDisplayName(submission);
   const submittedAt = new Date().toISOString();
@@ -568,7 +574,7 @@ async function insertSupabaseRegistrationRequest(
   request: UserRegistrationRequest,
 ): Promise<{
   request: UserRegistrationRequest | null;
-  source: "supabase" | "memory_fallback";
+  source: "supabase";
   warning: string | null;
 }> {
   try {
@@ -621,8 +627,8 @@ async function insertSupabaseRegistrationRequest(
     if (error || !data) {
       return {
         request: null,
-        source: "memory_fallback",
-        warning: "Supabase 寫入失敗，已改用暫存。請確認 0026 migration 與 service role key。",
+        source: "supabase",
+        warning: "Supabase 寫入失敗，請確認 0026 migration、資料表欄位與 service role key。",
       };
     }
 
@@ -634,10 +640,14 @@ async function insertSupabaseRegistrationRequest(
   } catch {
     return {
       request: null,
-      source: "memory_fallback",
-      warning: "Supabase 管理端環境尚未設定，已改用暫存。",
+      source: "supabase",
+      warning: "Supabase 管理端環境尚未設定，註冊資料未寫入。請確認正式環境變數。",
     };
   }
+}
+
+function isSupportedCompactImageDataUrl(value: string) {
+  return value.startsWith("data:image/") && value.length <= 1_000_000;
 }
 
 async function getSupabaseActiveWorkspace() {

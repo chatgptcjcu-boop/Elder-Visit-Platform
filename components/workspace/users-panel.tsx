@@ -1662,12 +1662,13 @@ export function VisitorRegistrationForm({
 
     try {
       const dataUrl = await readFileAsDataUrl(file);
-      const previewDataUrl = await createLocalHeadshotPreview(dataUrl);
+      const compactDataUrl = await createCompactHeadshotDataUrl(dataUrl);
+      const previewDataUrl = await createLocalHeadshotPreview(compactDataUrl);
       updateForm({
-        headshotOriginalUrl: dataUrl,
+        headshotOriginalUrl: compactDataUrl,
         headshotProcessedUrl: previewDataUrl,
       });
-      setHeadshotMessage("已選擇自拍照，送出後會正式寫入註冊資料。AI 去背與修圖功能後續再接。");
+      setHeadshotMessage("已壓縮自拍照並產生證件照預覽，送出後會正式寫入註冊資料。AI 去背與修圖功能後續再接。");
     } catch {
       setHeadshotMessage("照片讀取失敗，請重新拍攝或選擇較清楚的自拍照。");
     } finally {
@@ -1936,7 +1937,7 @@ export function VisitorRegistrationForm({
               </p>
             )}
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
-              目前先保存拍照或手機相簿照片的小尺寸預覽；AI 去背與修圖功能後續再接。
+              目前會先將拍照或手機相簿照片壓縮為小尺寸 JPEG，再保存證件照預覽；AI 去背與修圖功能後續再接。
             </p>
           </div>
         </div>
@@ -1996,13 +1997,41 @@ function readFileAsDataUrl(file: File) {
   });
 }
 
+function createCompactHeadshotDataUrl(dataUrl: string) {
+  return new Promise<string>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      const maxWidth = 720;
+      const maxHeight = 960;
+      const scale = Math.min(maxWidth / image.width, maxHeight / image.height, 1);
+      const width = Math.max(1, Math.round(image.width * scale));
+      const height = Math.max(1, Math.round(image.height * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext("2d");
+      if (!context) {
+        reject(new Error("Canvas is not available."));
+        return;
+      }
+
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, width, height);
+      context.drawImage(image, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", 0.62));
+    };
+    image.onerror = () => reject(new Error("Image could not be loaded."));
+    image.src = dataUrl;
+  });
+}
+
 function createLocalHeadshotPreview(dataUrl: string) {
   return new Promise<string>((resolve, reject) => {
     const image = new Image();
     image.onload = () => {
       const canvas = document.createElement("canvas");
-      canvas.width = 300;
-      canvas.height = 400;
+      canvas.width = 240;
+      canvas.height = 320;
       const context = canvas.getContext("2d");
       if (!context) {
         reject(new Error("Canvas is not available."));
@@ -2031,7 +2060,7 @@ function createLocalHeadshotPreview(dataUrl: string) {
         canvas.height,
       );
 
-      resolve(canvas.toDataURL("image/jpeg", 0.72));
+      resolve(canvas.toDataURL("image/jpeg", 0.62));
     };
     image.onerror = () => reject(new Error("Image could not be loaded."));
     image.src = dataUrl;
