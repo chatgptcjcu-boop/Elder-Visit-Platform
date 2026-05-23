@@ -8,6 +8,7 @@ import {
 } from "@/lib/domain/log-tiering";
 import { getSystemStatus } from "@/lib/system/env";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { hasRuntimeEnvValue } from "@/lib/runtime/env";
 
 export async function GET(request: NextRequest) {
   const forbidden = requireCapability(request, "system.read");
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
 }
 
 async function getSupabaseAdminDiagnostics() {
-  const serviceRoleConfigured = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+  const serviceRoleConfigured = hasRuntimeEnvValue("SUPABASE_SERVICE_ROLE_KEY");
 
   if (!serviceRoleConfigured) {
     return {

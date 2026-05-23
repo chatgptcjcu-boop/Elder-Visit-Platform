@@ -1,3 +1,5 @@
+import { hasRuntimeEnvValue } from "@/lib/runtime/env";
+
 export type SystemStatus = {
   supabaseUrlConfigured: boolean;
   supabaseAnonKeyConfigured: boolean;
@@ -6,8 +8,8 @@ export type SystemStatus = {
 };
 
 export function getSystemStatus(): SystemStatus {
-  const supabaseUrlConfigured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
-  const supabaseAnonKeyConfigured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const supabaseUrlConfigured = hasRuntimeEnvValue("NEXT_PUBLIC_SUPABASE_URL");
+  const supabaseAnonKeyConfigured = hasRuntimeEnvValue("NEXT_PUBLIC_SUPABASE_ANON_KEY");
   const missing = [
     !supabaseUrlConfigured ? "NEXT_PUBLIC_SUPABASE_URL" : null,
     !supabaseAnonKeyConfigured ? "NEXT_PUBLIC_SUPABASE_ANON_KEY" : null,

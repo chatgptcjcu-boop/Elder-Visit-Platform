@@ -1,4 +1,5 @@
 import { getCurrentWorkspace } from "@/lib/domain/mock-data";
+import { hasRuntimeEnvValue } from "@/lib/runtime/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type {
   UserRegistrationDecision,
@@ -108,9 +109,8 @@ export const registrationRequests: UserRegistrationRequest[] = [
 export async function getUserManagementOverview() {
   const workspace = getCurrentWorkspace();
   const supabaseRequests = await getSupabaseRegistrationRequests();
-  const useSupabaseOnly = Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY,
-  );
+  const useSupabaseOnly =
+    hasRuntimeEnvValue("NEXT_PUBLIC_SUPABASE_URL") && hasRuntimeEnvValue("SUPABASE_SERVICE_ROLE_KEY");
 
   return {
     workspace,
