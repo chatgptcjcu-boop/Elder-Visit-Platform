@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>長照機構用生成式 AI 實作評鑑管理系統｜長榮大學醫管系專題</title>
+    <meta
+      name="description"
+      content="長榮大學醫務管理學系大三大四專題課程講義：用生成式 AI 實作長照機構評鑑管理系統產品雛形。"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar" id="sidebar">
+        <div class="brand">
+          <span class="brand-mark">醫</span>
+          <div>
+            <p class="eyebrow">長榮大學醫管系專題</p>
+            <h1>長照 AI 評鑑系統</h1>
+          </div>
+        </div>
+
+        <div class="sidebar-tools">
+          <button class="mini-button" id="toggleToc" type="button">隱藏目錄</button>
+          <button class="mini-button" id="togglePrompt" type="button">隱藏 Prompt</button>
+        </div>
+
+        <nav class="toc" id="toc" aria-label="頁面目錄"></nav>
+
+        <div class="downloads">
+          <a href="./downloads/prompt-pack.md" download>Prompt 包</a>
+          <a href="./source/teaching-guide.md" download>講師指引</a>
+          <a href="./source/student-project-brief.md" download>學生任務書</a>
+          <a href="./source/source-notes.md" download>來源說明</a>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="hero">
+          <div>
+            <p class="eyebrow">AI project-based course</p>
+            <h2>長照機構用生成式 AI 來實作評鑑管理系統</h2>
+            <p class="subtitle">24 頁主講義 + 6 頁附錄｜從場域問題、AI 工作流到產品雛形與 GitHub 發佈</p>
+          </div>
+          <div class="hero-actions">
+            <button class="icon-button" id="prevBtn" type="button" aria-label="上一頁">‹</button>
+            <button class="icon-button" id="nextBtn" type="button" aria-label="下一頁">›</button>
+            <button class="text-button" id="fullscreenBtn" type="button">全螢幕</button>
+            <button class="text-button" id="exportNotesBtn" type="button">匯出筆記</button>
+          </div>
+        </header>
+
+        <section class="deck-grid">
+          <article class="slide" id="slide">
+            <div class="slide-top">
+              <span id="slideNo"></span>
+              <span id="slideSection"></span>
+            </div>
+            <div class="visual" id="visual"></div>
+            <div class="content">
+              <p class="eyebrow" id="kicker"></p>
+              <h3 id="title"></h3>
+              <p class="lead" id="lead"></p>
+              <ul id="points"></ul>
+            </div>
+          </article>
+
+          <aside class="prompt-panel" id="promptPanel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">本頁重點與 Prompt</p>
+                <h4 id="promptTitle"></h4>
+              </div>
+              <button class="mini-button" id="copyPromptBtn" type="button">複製</button>
+            </div>
+            <section>
+              <h5>本頁重點</h5>
+              <p id="summary"></p>
+            </section>
+            <section>
+              <h5>搭配 Prompt</h5>
+              <pre id="prompt"></pre>
+            </section>
+            <section>
+              <h5>我的筆記</h5>
+              <textarea id="notes" rows="8" placeholder="輸入課堂案例、分組提醒或專題想法。筆記會自動暫存在本機瀏覽器。"></textarea>
+            </section>
+          </aside>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
