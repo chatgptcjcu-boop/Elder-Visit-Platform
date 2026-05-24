@@ -1,6 +1,7 @@
 import { getCurrentWorkspace } from "@/lib/domain/mock-data";
 import { hasRuntimeEnvValue } from "@/lib/runtime/env";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getHeadshotPreviewUrl, uploadRegistrationHeadshot } from "@/lib/domain/visitor-headshots";
 import type {
   UserRegistrationDecision,
   UserRegistrationDecisionResult,
@@ -565,7 +566,14 @@ async function getSupabaseRegistrationRequests(): Promise<UserRegistrationReques
 
     const profiles = await getSupabaseVisitorProfileRemittance(data);
 
-    return data.map((row) => mapRegistrationRow(row, profiles.get(row.account_id ?? "")));
+    const displayRows = await Promise.all(
+      data.map(async (row) => ({
+        ...row,
+        headshot_processed_url: await getHeadshotPreviewUrl(row.headshot_processed_url),
+      })),
+    );
+
+    return displayRows.map((row) => mapRegistrationRow(row, profiles.get(row.account_id ?? "")));
   } catch {
     return [];
   }
@@ -664,8 +672,26 @@ async function insertSupabaseRegistrationRequest(
       };
     }
 
+    let savedRow = data;
+    if (profile?.headshotProcessedUrl) {
+      const storagePath = await uploadRegistrationHeadshot(data.id, profile.headshotProcessedUrl);
+      if (storagePath) {
+        const { data: storageRow } = await (supabase as unknown as RegistrationRequestReviewClient)
+          .from("workspace_registration_requests")
+          .update({
+            headshot_original_url: null,
+            headshot_processed_url: storagePath,
+          })
+          .eq("id", data.id)
+          .select("*")
+          .single();
+        savedRow = storageRow ?? data;
+      }
+    }
+
+    const previewUrl = await getHeadshotPreviewUrl(savedRow.headshot_processed_url);
     return {
-      request: mapRegistrationRow(data),
+      request: mapRegistrationRow({ ...savedRow, headshot_processed_url: previewUrl }),
       source: "supabase",
       warning: null,
     };

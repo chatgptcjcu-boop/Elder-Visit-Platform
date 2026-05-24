@@ -68,3 +68,11 @@
 - **Rule:** Approval workflows must treat completed decisions as terminal on the server and immediately remove or relabel completed actions in the interface.
 - **Evidence:** `lib/domain/user-management.ts` and `components/workspace/users-panel.tsx`.
 - **Added on:** 2026-05-24
+
+## Lesson: Sensitive photos need private file storage and controlled exports
+
+- **Trigger:** Approved visitor rosters need to export headshots for 200 or more volunteers.
+- **Cause:** Embedding image data in CSV or JSON makes exports oversized and obscures who can copy the actual photo files.
+- **Rule:** Store headshots in a private attachment bucket, expose previews through short-lived authorized URLs, and export photos as permission-checked ZIP files named by the permanent visitor code.
+- **Evidence:** `lib/domain/visitor-headshots.ts`, `app/api/users/export-headshots/route.ts`, and `supabase/migrations/0029_visitor_headshot_storage.sql`.
+- **Added on:** 2026-05-24

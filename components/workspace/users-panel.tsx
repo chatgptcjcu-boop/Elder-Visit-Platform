@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
   ArrowLeft,
@@ -859,6 +859,7 @@ function ApprovedVisitorRegistry({
   const [verifyingRequestId, setVerifyingRequestId] = useState<string | null>(null);
   const [batchAction, setBatchAction] = useState<"invite" | "verify" | null>(null);
   const [inviteMessage, setInviteMessage] = useState<string | null>(null);
+  const [exportingPhotos, setExportingPhotos] = useState(false);
   const baseFilteredRequests = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
@@ -1126,9 +1127,10 @@ function ApprovedVisitorRegistry({
       const displayName = profile?.displayName ?? request.fullName;
       return {
         序號: String(index + 1),
+        訪員正式編碼: profile?.visitorCode ?? "",
         顯示名稱: displayName,
-        建議照片檔名: `${sanitizeFilename(displayName)}.jpg`,
-        照片資料: profile?.headshotProcessedUrl ?? "",
+        照片檔名: `${sanitizeFilename(profile?.visitorCode ?? profile?.registrationCode ?? displayName)}_證件照.jpg`,
+        照片狀態: profile?.headshotProcessedUrl ? "有照片" : "缺照片",
       };
     });
 
@@ -1148,14 +1150,50 @@ function ApprovedVisitorRegistry({
       requestedUnitName: request.requestedUnitName,
       status: request.status,
       submittedAt: request.submittedAt,
-      profile: request.visitorRegistrationProfile,
+      profile: request.visitorRegistrationProfile
+        ? {
+            ...request.visitorRegistrationProfile,
+            headshotOriginalUrl: null,
+            headshotProcessedUrl: request.visitorRegistrationProfile.headshotProcessedUrl
+              ? "已保存，請使用照片 ZIP 匯出"
+              : null,
+            passbookCoverUrl: request.visitorRegistrationProfile.passbookCoverUrl ? "已保存" : null,
+          }
+        : undefined,
     }));
 
     downloadTextFile(
-      selectedRequests.length > 0 ? "已勾選訪員完整資料含照片.json" : "已通過訪員完整資料含照片.json",
+      selectedRequests.length > 0 ? "已勾選訪員完整資料.json" : "已通過訪員完整資料.json",
       JSON.stringify(rows, null, 2),
       "application/json;charset=utf-8",
     );
+  }
+
+  async function exportHeadshotZip() {
+    setExportingPhotos(true);
+    setInviteMessage(null);
+
+    try {
+      const response = await fetch("/api/users/export-headshots", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ requestIds: exportRequests.map((request) => request.id) }),
+      });
+
+      if (!response.ok) {
+        const json = (await response.json()) as { error?: { message?: string } };
+        setInviteMessage(json.error?.message ?? "照片匯出失敗，請稍後再試。");
+        return;
+      }
+
+      downloadBlobFile(
+        selectedRequests.length > 0 ? "已勾選訪員證件照.zip" : "已通過訪員證件照.zip",
+        await response.blob(),
+      );
+      setInviteMessage(`已產生 ${exportRequests.length} 位訪員的照片匯出檔。`);
+    } finally {
+      setExportingPhotos(false);
+    }
   }
 
   return (
@@ -1172,7 +1210,7 @@ function ApprovedVisitorRegistry({
           </p>
         </div>
         {mode === "approved" && (
-        <div className="grid w-full gap-2 sm:grid-cols-3 xl:w-auto xl:min-w-[520px]">
+        <div className="grid w-full gap-2 sm:grid-cols-2 xl:w-auto xl:min-w-[600px]">
           <Button
             type="button"
             variant="outline"
@@ -1195,12 +1233,22 @@ function ApprovedVisitorRegistry({
           </Button>
           <Button
             type="button"
+            variant="outline"
             className="w-full"
             onClick={exportFullJson}
             disabled={exportRequests.length === 0}
           >
             <Download className="h-4 w-4" />
-            完整匯出含照片
+            匯出完整資料
+          </Button>
+          <Button
+            type="button"
+            className="w-full"
+            onClick={exportHeadshotZip}
+            disabled={exportRequests.length === 0 || exportingPhotos}
+          >
+            <Download className="h-4 w-4" />
+            {exportingPhotos ? "照片打包中" : "匯出證件照 ZIP"}
           </Button>
         </div>
         )}
@@ -1575,7 +1623,7 @@ function ApprovedVisitorRegistry({
 
       {mode === "approved" && (
       <p className="mt-3 text-xs leading-5 text-muted-foreground">
-        「完整匯出含照片」會把證件照以資料形式放入 JSON，適合備份或後續批次轉檔；CSV 名冊適合提供行政彙整。
+        CSV 與 JSON 僅提供名冊和照片狀態；需交付證件照時，請使用「匯出證件照 ZIP」，照片會依訪員正式編碼命名。
       </p>
       )}
     </section>
@@ -1656,6 +1704,8 @@ export function VisitorRegistrationForm({
   const [headshotProcessing, setHeadshotProcessing] = useState(false);
   const [headshotMessage, setHeadshotMessage] = useState<string | null>(null);
   const [submitMessage, setSubmitMessage] = useState<string | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const albumInputRef = useRef<HTMLInputElement>(null);
   const displayName = createVisitorDisplayName(form);
   const headshotInstruction = "請到牆壁白色的背景處拍攝，臉部看向鏡頭，保持光線明亮。";
   const canSubmit = Boolean(
@@ -1671,7 +1721,7 @@ export function VisitorRegistrationForm({
     setForm((current) => ({ ...current, ...patch }));
   }
 
-  async function handlePhoto(file: File | undefined) {
+  async function handlePhoto(file: File | undefined, source: "拍攝" | "相簿") {
     if (!file) return;
 
     setHeadshotProcessing(true);
@@ -1685,7 +1735,7 @@ export function VisitorRegistrationForm({
         headshotOriginalUrl: compactDataUrl,
         headshotProcessedUrl: previewDataUrl,
       });
-      setHeadshotMessage("已壓縮自拍照並產生證件照預覽，送出後會正式寫入註冊資料。AI 去背與修圖功能後續再接。");
+      setHeadshotMessage(`已從${source}取得照片並壓縮為證件照預覽，送出後會正式保存。AI 去背與修圖功能後續再接。`);
     } catch {
       setHeadshotMessage("照片讀取失敗，請重新拍攝或選擇較清楚的自拍照。");
     } finally {
@@ -1938,14 +1988,47 @@ export function VisitorRegistrationForm({
                 )}
               </div>
             </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={headshotProcessing}
+                onClick={() => cameraInputRef.current?.click()}
+              >
+                <Camera className="h-4 w-4" />
+                啟動相機
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={headshotProcessing}
+                onClick={() => albumInputRef.current?.click()}
+              >
+                <Plus className="h-4 w-4" />
+                從相簿選擇
+              </Button>
+            </div>
             <input
-              className="mt-3 w-full rounded-md border bg-card px-3 py-2 text-sm"
+              ref={cameraInputRef}
+              className="hidden"
               type="file"
               accept="image/*"
               capture="user"
               disabled={headshotProcessing}
               onChange={(event) => {
-                void handlePhoto(event.target.files?.[0]);
+                void handlePhoto(event.target.files?.[0], "拍攝");
+                event.target.value = "";
+              }}
+            />
+            <input
+              ref={albumInputRef}
+              className="hidden"
+              type="file"
+              accept="image/*"
+              disabled={headshotProcessing}
+              onChange={(event) => {
+                void handlePhoto(event.target.files?.[0], "相簿");
+                event.target.value = "";
               }}
             />
             {headshotMessage && (
@@ -2112,6 +2195,15 @@ function downloadTextFile(filename: string, content: string, type: string) {
   document.body.appendChild(link);
   link.click();
   link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function downloadBlobFile(filename: string, blob: Blob) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
   URL.revokeObjectURL(url);
 }
 

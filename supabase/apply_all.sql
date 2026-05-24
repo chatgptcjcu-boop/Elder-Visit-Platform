@@ -2444,3 +2444,18 @@ alter table public.visitor_profiles
 
 create index if not exists idx_visitor_profiles_remittance_review
 on public.visitor_profiles(workspace_id, remittance_review_status, remittance_ready);
+
+
+-- supabase/migrations/0029_visitor_headshot_storage.sql
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'visitor-headshots',
+  'visitor-headshots',
+  false,
+  1000000,
+  array['image/jpeg']
+)
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;

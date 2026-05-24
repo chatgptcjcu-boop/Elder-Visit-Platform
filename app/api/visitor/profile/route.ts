@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { getHeadshotPreviewUrl } from "@/lib/domain/visitor-headshots";
 
 type VisitorSelfProfile = {
   id: string;
@@ -193,7 +194,10 @@ async function getProfileByAuthUser(authUserId: string, email: string) {
       .maybeSingle();
 
     if (error || !data) return null;
-    return mapProfile(data);
+    return mapProfile({
+      ...data,
+      headshot_processed_url: await getHeadshotPreviewUrl(data.headshot_processed_url),
+    });
   } catch {
     return null;
   }
