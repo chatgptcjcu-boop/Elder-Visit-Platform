@@ -414,7 +414,10 @@ async function reviewSupabaseRegistration(
         .select("*")
         .eq("id", decision.requestId)
         .single();
-      return latestRequest ? createRegistrationDecisionResult(latestRequest, true) : null;
+      if (latestRequest?.status === "approved" || latestRequest?.status === "rejected") {
+        return createRegistrationDecisionResult(latestRequest, true);
+      }
+      return null;
     }
 
     if (decision.decision === "approve") {
