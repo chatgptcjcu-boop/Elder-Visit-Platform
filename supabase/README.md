@@ -35,6 +35,7 @@
 27. `0027_visitor_identity_profile_completion.sql`
 28. `0028_visitor_remittance_documents.sql`
 29. `0029_visitor_headshot_storage.sql`
+30. `0030_visitor_remittance_storage_qr_site.sql`
 
 最後再執行：
 
@@ -49,8 +50,9 @@
 - 匯入欄位、客製欄位：`0005`
 - 表單、流程模板、匯出模板、KPI：`0006`, `0018`, `0024`
 - 異常通報、通知、工作群組訊息、LINE 綁定：`0007`, `0019`, `0023`
-- 匯出、核銷、付款鎖定、費率參數、訪員匯款資料：`0008`, `0014`, `0015`, `0025`, `0028`
+- 匯出、核銷、付款鎖定、費率參數、訪員匯款資料：`0008`, `0014`, `0015`, `0025`, `0028`, `0030`
 - 訪員證件照私有附件儲存：`0029`
+- 訪員存摺私有附件儲存與 QR 正式網址修正：`0030`
 - 個資同意治理與使用紀錄：`0010`
 - 日誌分層與保留政策：`0011`
 
@@ -60,5 +62,7 @@
 - `service_role key` 不要貼在前端，也不要放入 `NEXT_PUBLIC_*`。
 - 訪員公開註冊會由伺服器端寫入 `workspace_registration_requests`，正式環境需設定 `SUPABASE_SERVICE_ROLE_KEY`，否則系統會只保留暫存 fallback。
 - 執行 `0029` 後，新註冊的證件照會優先保存至私有 `visitor-headshots` bucket；既有資料欄位照片仍可由後台匯出流程相容讀取。
+- 執行 `0030` 後，訪員新上傳的存摺封面會優先保存至私有 `visitor-remittance-documents` bucket，既有舊 Netlify QR 連結會修正到正式 Vercel 網址，登入邀請亦會累計寄送次數供後台辨識重寄紀錄。
+- 正式環境可設定 `NEXT_PUBLIC_APP_URL` 作為新產生 QR Code 的網址基底，例如 `https://elder-visit-platform.vercel.app`。
 - 目前程式已有 Supabase 連線設定，但 repository 仍有 mock fallback。資料表建立後，下一步才是逐頁把資料來源改成 Supabase 查詢。
 - RLS 已在 migration 中啟用，正式接資料時要以登入帳號、工作空間成員與角色權限做查詢範圍控管。

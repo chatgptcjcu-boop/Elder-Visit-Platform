@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getHeadshotPreviewUrl } from "@/lib/domain/visitor-headshots";
+import { getPassbookPreviewUrl, uploadVisitorPassbook } from "@/lib/domain/visitor-documents";
 
 type VisitorSelfProfile = {
   id: string;
@@ -96,7 +97,12 @@ export async function PATCH(request: NextRequest) {
   }
 
   const now = new Date().toISOString();
-  const patch = {
+  const inlinePassbook = sanitizePassbookDataUrl(body.passbookCoverUrl, null);
+  let passbookCoverUrl: string | null = null;
+  if (inlinePassbook) {
+    passbookCoverUrl = (await uploadVisitorPassbook(profile.id, inlinePassbook)) ?? inlinePassbook;
+  }
+  const patch: Record<string, unknown> = {
     phone: sanitizeText(body.phone, profile.phone),
     official_email: sanitizeText(body.officialEmail, profile.officialEmail),
     emergency_contact_name: sanitizeText(body.emergencyContactName, profile.emergencyContactName),
@@ -106,8 +112,6 @@ export async function PATCH(request: NextRequest) {
     bank_code: sanitizeText(body.bankCode, profile.bankCode),
     bank_branch_name: sanitizeText(body.bankBranchName, profile.bankBranchName),
     bank_account_name: sanitizeText(body.bankAccountName, profile.bankAccountName),
-    passbook_cover_url: sanitizePassbookDataUrl(body.passbookCoverUrl, profile.passbookCoverUrl),
-    passbook_uploaded_at: body.passbookCoverUrl ? now : profile.passbookUploadedAt,
     remittance_review_status: "pending",
     remittance_ready: false,
     service_availability: body.serviceAvailability ?? profile.serviceAvailability ?? {},
@@ -115,6 +119,10 @@ export async function PATCH(request: NextRequest) {
     profile_completed_at: now,
     updated_at: now,
   };
+  if (inlinePassbook) {
+    patch.passbook_cover_url = passbookCoverUrl;
+    patch.passbook_uploaded_at = now;
+  }
 
   try {
     const supabase = createAdminClient();
@@ -197,6 +205,7 @@ async function getProfileByAuthUser(authUserId: string, email: string) {
     return mapProfile({
       ...data,
       headshot_processed_url: await getHeadshotPreviewUrl(data.headshot_processed_url),
+      passbook_cover_url: await getPassbookPreviewUrl(data.passbook_cover_url),
     });
   } catch {
     return null;
@@ -258,7 +267,7 @@ function getDemoVisitorProfile(request: NextRequest) {
     remittanceReviewStatus: "pending",
     serviceAvailability: { weekday: "平日白天", villages: "可依派案調整" },
     profileCompletionStatus: "incomplete",
-    qrCodePayload: "https://eldervisit.netlify.app/verify/visitor/EV-115-YH-CIV-0001",
+    qrCodePayload: "https://elder-visit-platform.vercel.app/verify/visitor/EV-115-YH-CIV-0001",
   };
 
   return NextResponse.json({ data, source: "demo" });

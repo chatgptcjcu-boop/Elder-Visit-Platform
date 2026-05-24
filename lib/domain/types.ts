@@ -195,6 +195,7 @@ export type VisitorRegistrationProfile = {
   registrationCode: string | null;
   authInviteStatus: VisitorAuthInviteStatus;
   authInvitedAt: string | null;
+  authInviteSentCount: number;
   authActivatedAt: string | null;
   profileCompletionStatus: VisitorProfileCompletionStatus;
   profileSubmittedAt: string | null;
@@ -237,6 +238,7 @@ export type VisitorRegistrationSubmission = Omit<
   | "registrationCode"
   | "authInviteStatus"
   | "authInvitedAt"
+  | "authInviteSentCount"
   | "authActivatedAt"
   | "profileCompletionStatus"
   | "profileSubmittedAt"

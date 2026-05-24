@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     const supabase = createAdminClient();
     const { data: registration, error } = await (supabase as unknown as RegistrationLookupClient)
       .from("workspace_registration_requests")
-      .select("id, account_id, requested_workspace_id, email, full_name")
+      .select("id, account_id, requested_workspace_id, email, full_name, status, auth_invite_status, training_completed")
       .eq("id", requestId)
       .single();
 
@@ -39,6 +39,50 @@ export async function POST(request: NextRequest) {
           },
         },
         { status: 404 },
+      );
+    }
+
+    if (registration.status !== "approved") {
+      return NextResponse.json(
+        {
+          error: {
+            code: "REGISTRATION_NOT_APPROVED",
+            message: "此申請尚未核准，不能確認為可派案。",
+          },
+        },
+        { status: 409 },
+      );
+    }
+
+    const { data: currentProfile, error: profileLookupError } = await (supabase as unknown as VisitorProfileLookupClient)
+      .from("visitor_profiles")
+      .select("phone, headshot_processed_url, profile_completion_status, bank_account_last5, bank_name, bank_code, bank_account_name, passbook_cover_url")
+      .eq("account_id", registration.account_id)
+      .eq("workspace_id", registration.requested_workspace_id)
+      .maybeSingle();
+
+    if (profileLookupError || !currentProfile) {
+      return NextResponse.json(
+        {
+          error: {
+            code: "PROFILE_NOT_FOUND",
+            message: "找不到可確認的訪員補充資料。",
+          },
+        },
+        { status: 404 },
+      );
+    }
+
+    const missingRequirements = getMissingAssignmentRequirements(registration, currentProfile);
+    if (missingRequirements.length > 0) {
+      return NextResponse.json(
+        {
+          error: {
+            code: "PROFILE_NOT_READY",
+            message: `尚未符合可派案條件：${missingRequirements.join("、")}。`,
+          },
+        },
+        { status: 409 },
       );
     }
 
@@ -110,6 +154,9 @@ type RegistrationLookupClient = {
             requested_workspace_id: string | null;
             email: string;
             full_name: string;
+            status: string;
+            auth_invite_status: string;
+            training_completed: boolean;
           } | null;
           error: unknown;
         }>;
@@ -117,6 +164,54 @@ type RegistrationLookupClient = {
     };
   };
 };
+
+type VisitorProfileEligibilityRow = {
+  phone: string | null;
+  headshot_processed_url: string | null;
+  profile_completion_status: string;
+  bank_account_last5: string | null;
+  bank_name: string | null;
+  bank_code: string | null;
+  bank_account_name: string | null;
+  passbook_cover_url: string | null;
+};
+
+type VisitorProfileLookupClient = {
+  from(table: "visitor_profiles"): {
+    select(query: string): {
+      eq(column: string, value: string): {
+        eq(column: string, value: string): {
+          maybeSingle(): Promise<{
+            data: VisitorProfileEligibilityRow | null;
+            error: unknown;
+          }>;
+        };
+      };
+    };
+  };
+};
+
+function getMissingAssignmentRequirements(
+  registration: {
+    auth_invite_status: string;
+    training_completed: boolean;
+  },
+  profile: VisitorProfileEligibilityRow,
+) {
+  const missing: string[] = [];
+  if (registration.auth_invite_status !== "activated") missing.push("帳號尚未啟用");
+  if (!registration.training_completed) missing.push("教育訓練未完成");
+  if (!profile.phone) missing.push("手機資料");
+  if (!profile.headshot_processed_url) missing.push("證件照");
+  if (profile.profile_completion_status !== "submitted" && profile.profile_completion_status !== "verified") {
+    missing.push("補充資料尚未送出");
+  }
+  if (!profile.bank_name || !profile.bank_code || !profile.bank_account_name || !profile.bank_account_last5) {
+    missing.push("匯款銀行資料");
+  }
+  if (!profile.passbook_cover_url) missing.push("存摺附件");
+  return missing;
+}
 
 type VisitorProfileVerifyClient = {
   from(table: "visitor_profiles"): {

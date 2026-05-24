@@ -76,3 +76,19 @@
 - **Rule:** Store headshots in a private attachment bucket, expose previews through short-lived authorized URLs, and export photos as permission-checked ZIP files named by the permanent visitor code.
 - **Evidence:** `lib/domain/visitor-headshots.ts`, `app/api/users/export-headshots/route.ts`, and `supabase/migrations/0029_visitor_headshot_storage.sql`.
 - **Added on:** 2026-05-24
+
+## Lesson: Assignment eligibility must be server-enforced
+
+- **Trigger:** Approved visitors still pass through invitation, activation, profile completion and remittance review before assignment.
+- **Cause:** A visible management button alone cannot prevent early assignment confirmation or stale client state.
+- **Rule:** Treat approval, account activation, required document completion and assignment eligibility as separate statuses, and enforce all eligibility checks in the server action that marks a visitor assignable.
+- **Evidence:** `app/api/users/verify-visitor-profile/route.ts`, `components/workspace/users-panel.tsx`, and `supabase/migrations/0030_visitor_remittance_storage_qr_site.sql`.
+- **Added on:** 2026-05-24
+
+## Lesson: Payment documents must be exported separately from identity photos
+
+- **Trigger:** Managers need to retrieve volunteer passbook images for remittance review after profile completion.
+- **Cause:** Combining payment documents with headshots expands unnecessary access to sensitive banking evidence.
+- **Rule:** Store passbook images in a private bucket and export them through an explicit, permission-checked ZIP action with a sensitive-data warning and visitor-code filenames, separately from headshot exports.
+- **Evidence:** `lib/domain/visitor-documents.ts`, `app/api/users/export-passbooks/route.ts`, and `components/workspace/users-panel.tsx`.
+- **Added on:** 2026-05-25

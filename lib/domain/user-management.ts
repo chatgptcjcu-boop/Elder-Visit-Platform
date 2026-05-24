@@ -1,5 +1,5 @@
 import { getCurrentWorkspace } from "@/lib/domain/mock-data";
-import { hasRuntimeEnvValue } from "@/lib/runtime/env";
+import { getRuntimeEnvValue, hasRuntimeEnvValue } from "@/lib/runtime/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getHeadshotPreviewUrl, uploadRegistrationHeadshot } from "@/lib/domain/visitor-headshots";
 import type {
@@ -74,6 +74,7 @@ export const registrationRequests: UserRegistrationRequest[] = [
       registrationCode: "REG-115-YH-0001",
       authInviteStatus: "not_sent",
       authInvitedAt: null,
+      authInviteSentCount: 0,
       authActivatedAt: null,
       profileCompletionStatus: "submitted",
       profileSubmittedAt: "2026-04-26T09:15:00+08:00",
@@ -200,6 +201,7 @@ export async function submitVisitorRegistration(
       registrationCode: null,
       authInviteStatus: "not_sent",
       authInvitedAt: null,
+      authInviteSentCount: 0,
       authActivatedAt: null,
       profileCompletionStatus,
       profileSubmittedAt: profileCompletionStatus === "submitted" ? submittedAt : null,
@@ -278,6 +280,16 @@ export async function inviteApprovedVisitor(
       };
     }
 
+    if (request.auth_invite_status === "activated") {
+      return {
+        requestId,
+        email: request.email,
+        status: "activated",
+        message: "此訪員已完成帳號啟用。",
+        nextStep: "無需重寄邀請，請接續確認補充資料與可派案狀態。",
+      };
+    }
+
     const redirectTo = `${origin}/login?invited=1`;
     const inviteResult = await supabase.auth.admin.inviteUserByEmail(request.email, {
       redirectTo,
@@ -333,6 +345,8 @@ async function updateInvitationStatus(
     .update({
       auth_invite_status: status,
       auth_invited_at: status === "sent" ? now : request.auth_invited_at,
+      auth_invite_sent_count:
+        status === "sent" ? (request.auth_invite_sent_count ?? 0) + 1 : request.auth_invite_sent_count,
     })
     .eq("id", request.id);
 
@@ -654,6 +668,7 @@ async function insertSupabaseRegistrationRequest(
         social_bureau_review_note: profile?.socialBureauReviewNote ?? null,
         auth_invite_status: profile?.authInviteStatus ?? "not_sent",
         auth_invited_at: profile?.authInvitedAt ?? null,
+        auth_invite_sent_count: profile?.authInviteSentCount ?? 0,
         auth_activated_at: profile?.authActivatedAt ?? null,
         profile_completion_status: profileCompletionStatus,
         profile_submitted_at: profile?.profileSubmittedAt ?? (profileCompletionStatus === "submitted" ? request.submittedAt : null),
@@ -787,6 +802,7 @@ function mapRegistrationRow(
             registrationCode: row.registration_code,
             authInviteStatus: normalizeAuthInviteStatus(row.auth_invite_status),
             authInvitedAt: row.auth_invited_at,
+            authInviteSentCount: row.auth_invite_sent_count ?? 0,
             authActivatedAt: row.auth_activated_at,
             profileCompletionStatus: normalizeProfileCompletionStatus(row.profile_completion_status),
             profileSubmittedAt: row.profile_submitted_at,
@@ -947,7 +963,8 @@ async function createVisitorCode(
 }
 
 function createVisitorQrCodePayload(visitorCode: string) {
-  return `https://eldervisit.netlify.app/verify/visitor/${visitorCode}`;
+  const siteUrl = (getRuntimeEnvValue("NEXT_PUBLIC_APP_URL") ?? "https://elder-visit-platform.vercel.app").replace(/\/+$/, "");
+  return `${siteUrl}/verify/visitor/${visitorCode}`;
 }
 
 type WorkspaceRegistrationRequestRow = {
@@ -983,6 +1000,7 @@ type WorkspaceRegistrationRequestRow = {
   registration_code: string | null;
   auth_invite_status: string | null;
   auth_invited_at: string | null;
+  auth_invite_sent_count: number | null;
   auth_activated_at: string | null;
   profile_completion_status: string | null;
   profile_submitted_at: string | null;

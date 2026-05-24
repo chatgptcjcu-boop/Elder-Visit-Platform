@@ -47,7 +47,7 @@ type UsersPayload = {
   flow: string[];
 };
 
-type VisitorRegistryView = "all" | "needs_invite" | "needs_profile" | "needs_remittance" | "assignable";
+type VisitorRegistryView = "all" | "needs_invite" | "awaiting_activation" | "needs_profile" | "assignable";
 
 type UserManagementTab = "overview" | "pending" | "approved" | "supplement" | "registration" | "flow";
 
@@ -82,17 +82,13 @@ export function UsersPanel() {
   const needsInviteCount = approvedRequests.filter((request) =>
     matchesVisitorRegistryView(request, "needs_invite"),
   ).length;
+  const awaitingActivationCount = approvedRequests.filter((request) =>
+    matchesVisitorRegistryView(request, "awaiting_activation"),
+  ).length;
   const needsProfileCount = approvedRequests.filter((request) =>
     matchesVisitorRegistryView(request, "needs_profile"),
   ).length;
-  const needsRemittanceCount = approvedRequests.filter((request) =>
-    matchesVisitorRegistryView(request, "needs_remittance"),
-  ).length;
-  const needsCompletionCount = approvedRequests.filter(
-    (request) =>
-      matchesVisitorRegistryView(request, "needs_profile") ||
-      matchesVisitorRegistryView(request, "needs_remittance"),
-  ).length;
+  const needsCompletionCount = needsProfileCount;
   const assignableCount = approvedRequests.filter((request) =>
     matchesVisitorRegistryView(request, "assignable"),
   ).length;
@@ -210,6 +206,10 @@ export function UsersPanel() {
                         invitation.status === "sent"
                           ? new Date().toISOString()
                           : request.visitorRegistrationProfile.authInvitedAt,
+                      authInviteSentCount:
+                        invitation.status === "sent"
+                          ? request.visitorRegistrationProfile.authInviteSentCount + 1
+                          : request.visitorRegistrationProfile.authInviteSentCount,
                     },
                   }
                 : request,
@@ -232,6 +232,8 @@ export function UsersPanel() {
                       ...request.visitorRegistrationProfile,
                       profileCompletionStatus: "verified",
                       profileReviewedAt: new Date().toISOString(),
+                      remittanceReviewStatus: "approved",
+                      remittanceReady: true,
                     },
                   }
                 : request,
@@ -252,7 +254,7 @@ export function UsersPanel() {
             </div>
             <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">註冊審核與訪員名冊</h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-              先看待審、待邀請、待補資料與可派案人數，再進入批次處理；註冊流程說明移到頁面底部索引。
+              先看待審、待邀請、待啟用、待補資料與可派案人數，再進入批次處理；註冊流程說明移到頁面底部索引。
             </p>
           </div>
           {payload && (
@@ -270,23 +272,12 @@ export function UsersPanel() {
 
       {payload && (
         <>
-          <section className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+          <section className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
             <UserDashboardMetric icon={Clock3} label="待審核" value={pendingRequests.length} />
             <UserDashboardMetric icon={Mail} label="待邀請" value={needsInviteCount} />
-            <UserDashboardMetric
-              icon={IdCard}
-              label="待補件"
-              value={needsCompletionCount}
-              detail={`個資 ${needsProfileCount} / 匯款 ${needsRemittanceCount}`}
-            />
+            <UserDashboardMetric icon={Clock3} label="待啟用" value={awaitingActivationCount} />
+            <UserDashboardMetric icon={IdCard} label="待補資料" value={needsCompletionCount} />
             <UserDashboardMetric icon={CheckCircle2} label="可派案" value={assignableCount} />
-            <UserDashboardMetric icon={XCircle} label="已退回" value={rejectedRequests.length} />
-            <UserDashboardMetric
-              icon={Camera}
-              label="證件照"
-              value={approvedPhotoCount}
-              detail={`/${approvedRequests.length}`}
-            />
           </section>
 
           <section className="rounded-lg border bg-card p-2">
@@ -333,16 +324,16 @@ export function UsersPanel() {
                 icon={Mail}
               />
               <UserActionCard
-                title="追補資料與匯款"
-                detail={`${needsCompletionCount} 位訪員仍需確認或補件；同一人不重複計算。`}
-                onClick={() => setActiveTab("supplement")}
-                icon={IdCard}
+                title="等待帳號啟用"
+                detail={`${awaitingActivationCount} 位訪員已收到邀請，尚未完成密碼設定。`}
+                onClick={() => setActiveTab("approved")}
+                icon={Clock3}
               />
               <UserActionCard
-                title="確認可派案名冊"
-                detail={`${assignableCount} 位訪員可納入派案與核銷流程。`}
-                onClick={() => setActiveTab("approved")}
-                icon={CheckCircle2}
+                title="追補資料與匯款"
+                detail={`${needsCompletionCount} 位已啟用訪員仍需補件或確認。`}
+                onClick={() => setActiveTab("supplement")}
+                icon={IdCard}
               />
             </div>
           </section>
@@ -372,9 +363,7 @@ export function UsersPanel() {
             <ApprovedVisitorRegistry
               mode="supplement"
               requests={approvedRequests.filter(
-                (request) =>
-                  matchesVisitorRegistryView(request, "needs_profile") ||
-                  matchesVisitorRegistryView(request, "needs_remittance"),
+                (request) => matchesVisitorRegistryView(request, "needs_profile"),
               )}
               onInvited={handleVisitorInvited}
               onVerified={handleVisitorVerified}
@@ -558,17 +547,17 @@ const remittanceStatusLabels: Record<string, string> = {
 
 const visitorRegistryViewLabels: Record<VisitorRegistryView, string> = {
   all: "全部",
-  needs_invite: "待發邀請",
-  needs_profile: "待補/待確認",
-  needs_remittance: "待匯款確認",
-  assignable: "已可派案",
+  needs_invite: "待邀請",
+  awaiting_activation: "待啟用",
+  needs_profile: "待補資料",
+  assignable: "可派案",
 };
 
 const userManagementTabLabels: Record<UserManagementTab, string> = {
   overview: "總覽",
   pending: "待審核",
-  approved: "已通過",
-  supplement: "待補件",
+  approved: "訪員名冊",
+  supplement: "待補資料",
   registration: "註冊入口",
   flow: "流程索引",
 };
@@ -860,6 +849,7 @@ function ApprovedVisitorRegistry({
   const [batchAction, setBatchAction] = useState<"invite" | "verify" | null>(null);
   const [inviteMessage, setInviteMessage] = useState<string | null>(null);
   const [exportingPhotos, setExportingPhotos] = useState(false);
+  const [exportingPassbooks, setExportingPassbooks] = useState(false);
   const baseFilteredRequests = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
@@ -917,7 +907,7 @@ function ApprovedVisitorRegistry({
     (request) => request.visitorRegistrationProfile?.authInviteStatus === "sent",
   ).length;
   const verifiedCount = filteredRequests.filter(
-    (request) => request.visitorRegistrationProfile?.profileCompletionStatus === "verified",
+    (request) => isAssignableVisitor(request),
   ).length;
   const remittanceReadyCount = filteredRequests.filter(
     (request) => request.visitorRegistrationProfile?.remittanceReady,
@@ -960,6 +950,16 @@ function ApprovedVisitorRegistry({
   }
 
   async function inviteVisitor(request: UserRegistrationRequest) {
+    if (request.visitorRegistrationProfile?.authInviteStatus === "activated") {
+      setInviteMessage("此訪員已啟用帳號，無需重寄登入邀請。");
+      return;
+    }
+    if (
+      request.visitorRegistrationProfile?.authInviteStatus === "sent" &&
+      !window.confirm("此訪員已寄送過登入邀請，確認要重新寄送嗎？")
+    ) {
+      return;
+    }
     setInvitingRequestId(request.id);
     setInviteMessage(null);
 
@@ -1052,11 +1052,11 @@ function ApprovedVisitorRegistry({
 
   async function batchVerifyVisitors() {
     const targets = (selectedRequests.length > 0 ? selectedRequests : filteredRequests).filter(
-      (request) => request.visitorRegistrationProfile?.profileCompletionStatus !== "verified",
+      (request) => getVisitorAssignmentRequirements(request).length === 0 && !isAssignableVisitor(request),
     );
 
     if (targets.length === 0) {
-      setInviteMessage("目前範圍內沒有需要確認可派案的訪員。");
+      setInviteMessage("目前範圍內沒有資料齊備且可確認派案的訪員。");
       return;
     }
 
@@ -1196,12 +1196,47 @@ function ApprovedVisitorRegistry({
     }
   }
 
+  async function exportPassbookZip() {
+    if (
+      !window.confirm(
+        "存摺附件包含敏感匯款資料，僅限核銷與匯款確認用途。確認要匯出目前清單的存摺附件嗎？",
+      )
+    ) {
+      return;
+    }
+
+    setExportingPassbooks(true);
+    setInviteMessage(null);
+
+    try {
+      const response = await fetch("/api/users/export-passbooks", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ requestIds: exportRequests.map((request) => request.id) }),
+      });
+
+      if (!response.ok) {
+        const json = (await response.json()) as { error?: { message?: string } };
+        setInviteMessage(json.error?.message ?? "存摺附件匯出失敗，請稍後再試。");
+        return;
+      }
+
+      downloadBlobFile(
+        selectedRequests.length > 0 ? "已勾選訪員存摺附件.zip" : "已通過訪員存摺附件.zip",
+        await response.blob(),
+      );
+      setInviteMessage(`已產生 ${exportRequests.length} 位訪員的存摺附件匯出檔。`);
+    } finally {
+      setExportingPassbooks(false);
+    }
+  }
+
   return (
     <section id="approved-visitors" className="rounded-lg border bg-card p-3 sm:p-4">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
         <div>
           <h2 className="font-semibold">
-            {mode === "supplement" ? "待補件與待確認" : "已通過訪員名冊管理"}
+            {mode === "supplement" ? "待補資料與待確認" : "訪員名冊與啟用管理"}
           </h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             {mode === "supplement"
@@ -1210,7 +1245,7 @@ function ApprovedVisitorRegistry({
           </p>
         </div>
         {mode === "approved" && (
-        <div className="grid w-full gap-2 sm:grid-cols-2 xl:w-auto xl:min-w-[600px]">
+        <div className="grid w-full gap-2 sm:grid-cols-2 xl:w-auto xl:min-w-[640px]">
           <Button
             type="button"
             variant="outline"
@@ -1250,6 +1285,16 @@ function ApprovedVisitorRegistry({
             <Download className="h-4 w-4" />
             {exportingPhotos ? "照片打包中" : "匯出證件照 ZIP"}
           </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full sm:col-span-2"
+            onClick={exportPassbookZip}
+            disabled={exportRequests.length === 0 || exportingPassbooks}
+          >
+            <Download className="h-4 w-4" />
+            {exportingPassbooks ? "存摺附件打包中" : "匯出存摺附件（敏感資料）"}
+          </Button>
         </div>
         )}
       </div>
@@ -1275,7 +1320,7 @@ function ApprovedVisitorRegistry({
       </div>
 
       {mode === "approved" && (
-      <div className="mt-4 hidden gap-2 md:grid md:grid-cols-5">
+      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
         {(Object.keys(visitorRegistryViewLabels) as VisitorRegistryView[]).map((view) => (
           <button
             key={view}
@@ -1391,7 +1436,7 @@ function ApprovedVisitorRegistry({
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-semibold">{request.fullName}</h3>
                     <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
-                      {mode === "supplement" ? "待補件" : "已通過"}
+                      {getVisitorLifecycleLabel(request)}
                     </span>
                   </div>
                   <p className="mt-1 break-words text-xs text-muted-foreground">
@@ -1424,6 +1469,11 @@ function ApprovedVisitorRegistry({
                 <p>訪員證：{profile?.visitorCertificateNo ?? "待補"}</p>
                 <p>訓練：{profile?.trainingCompleted ? "已完成" : "未完成"}</p>
                 <p>登入邀請：{inviteStatusLabels[profile?.authInviteStatus ?? "not_sent"]}</p>
+                {profile?.authInvitedAt && (
+                  <p>
+                    最近邀請：{formatDateTime(profile.authInvitedAt)}（共 {profile.authInviteSentCount} 次）
+                  </p>
+                )}
                 <p>資料確認：{profileStatusLabels[profile?.profileCompletionStatus ?? "incomplete"]}</p>
                 <p>匯款審核：{remittanceStatusLabels[profile?.remittanceReviewStatus ?? "pending"]}</p>
                 <p>存摺：{profile?.passbookCoverUrl ? "已上傳" : "未上傳"}</p>
@@ -1434,7 +1484,7 @@ function ApprovedVisitorRegistry({
                   type="button"
                   variant={profile?.authInviteStatus === "sent" ? "outline" : "default"}
                   className="w-full"
-                  disabled={invitingRequestId === request.id}
+                  disabled={invitingRequestId === request.id || profile?.authInviteStatus === "activated"}
                   onClick={() => inviteVisitor(request)}
                 >
                   {profile?.authInviteStatus === "sent" ? (
@@ -1444,6 +1494,8 @@ function ApprovedVisitorRegistry({
                   )}
                   {invitingRequestId === request.id
                     ? "發送中"
+                    : profile?.authInviteStatus === "activated"
+                      ? "帳號已啟用"
                     : profile?.authInviteStatus === "sent"
                       ? "重寄邀請"
                       : "發送邀請"}
@@ -1451,21 +1503,27 @@ function ApprovedVisitorRegistry({
                 )}
                 <Button
                   type="button"
-                  variant={profile?.profileCompletionStatus === "verified" ? "outline" : "default"}
+                  variant={isAssignableVisitor(request) ? "outline" : "default"}
                   className="w-full"
-                  disabled={verifyingRequestId === request.id}
+                  disabled={
+                    verifyingRequestId === request.id ||
+                    isAssignableVisitor(request) ||
+                    getVisitorAssignmentRequirements(request).length > 0
+                  }
                   onClick={() => verifyVisitorProfile(request)}
                 >
                   <CheckCircle2 className="h-4 w-4" />
                   {verifyingRequestId === request.id
                     ? "確認中"
-                    : profile?.profileCompletionStatus === "verified"
+                    : isAssignableVisitor(request)
                       ? mode === "supplement"
                         ? "已確認完成"
                         : "已可派案"
-                      : mode === "supplement"
-                        ? "確認補件完成"
-                        : "確認可派案"}
+                      : getVisitorAssignmentRequirements(request).length > 0
+                        ? "資料未齊"
+                        : mode === "supplement"
+                          ? "確認補件完成"
+                          : "確認可派案"}
                 </Button>
               </div>
               <p className="mt-2 break-all text-xs text-muted-foreground">
@@ -1563,6 +1621,11 @@ function ApprovedVisitorRegistry({
                     <p className="mt-1 text-xs text-muted-foreground">
                       {inviteStatusLabels[profile?.authInviteStatus ?? "not_sent"]}
                     </p>
+                    {profile?.authInvitedAt && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {formatDateTime(profile.authInvitedAt)} 寄送 · 共 {profile.authInviteSentCount} 次
+                      </p>
+                    )}
                     <p className="mt-1 text-xs text-muted-foreground">
                       {profileStatusLabels[profile?.profileCompletionStatus ?? "incomplete"]}
                     </p>
@@ -1574,7 +1637,7 @@ function ApprovedVisitorRegistry({
                         type="button"
                         size="sm"
                         variant={profile?.authInviteStatus === "sent" ? "outline" : "default"}
-                        disabled={invitingRequestId === request.id}
+                        disabled={invitingRequestId === request.id || profile?.authInviteStatus === "activated"}
                         onClick={() => inviteVisitor(request)}
                       >
                         {profile?.authInviteStatus === "sent" ? (
@@ -1584,6 +1647,8 @@ function ApprovedVisitorRegistry({
                         )}
                         {invitingRequestId === request.id
                           ? "發送中"
+                          : profile?.authInviteStatus === "activated"
+                            ? "已啟用"
                           : profile?.authInviteStatus === "sent"
                             ? "重寄"
                             : "邀請"}
@@ -1592,18 +1657,24 @@ function ApprovedVisitorRegistry({
                       <Button
                         type="button"
                         size="sm"
-                        variant={profile?.profileCompletionStatus === "verified" ? "outline" : "default"}
-                        disabled={verifyingRequestId === request.id}
+                        variant={isAssignableVisitor(request) ? "outline" : "default"}
+                        disabled={
+                          verifyingRequestId === request.id ||
+                          isAssignableVisitor(request) ||
+                          getVisitorAssignmentRequirements(request).length > 0
+                        }
                         onClick={() => verifyVisitorProfile(request)}
                       >
                         <CheckCircle2 className="h-4 w-4" />
                         {verifyingRequestId === request.id
                           ? "確認中"
-                          : profile?.profileCompletionStatus === "verified"
+                          : isAssignableVisitor(request)
                             ? mode === "supplement"
                               ? "已確認"
                               : "可派案"
-                            : mode === "supplement"
+                            : getVisitorAssignmentRequirements(request).length > 0
+                              ? "資料未齊"
+                              : mode === "supplement"
                               ? "確認完成"
                               : "確認"}
                       </Button>
@@ -1634,7 +1705,7 @@ function getVisitorSupplementIssues(request: UserRegistrationRequest) {
   const profile = request.visitorRegistrationProfile;
   const issues: string[] = [];
 
-  if (profile?.profileCompletionStatus !== "verified") {
+  if (profile?.profileCompletionStatus !== "submitted" && profile?.profileCompletionStatus !== "verified") {
     issues.push("個資待確認");
   }
   if (!profile?.remittanceReady || profile.remittanceReviewStatus !== "approved") {
@@ -1650,6 +1721,41 @@ function getVisitorSupplementIssues(request: UserRegistrationRequest) {
   return issues;
 }
 
+function getVisitorAssignmentRequirements(request: UserRegistrationRequest) {
+  const profile = request.visitorRegistrationProfile;
+  const missing: string[] = [];
+  if (profile?.authInviteStatus !== "activated") missing.push("帳號未啟用");
+  if (!profile?.trainingCompleted) missing.push("教育訓練");
+  if (!profile?.phone) missing.push("手機");
+  if (!profile?.headshotProcessedUrl) missing.push("證件照");
+  if (profile?.profileCompletionStatus !== "submitted" && profile?.profileCompletionStatus !== "verified") {
+    missing.push("補充資料");
+  }
+  if (!profile?.bankName || !profile.bankCode || !profile.bankAccountName || !profile.bankAccountLast5) {
+    missing.push("匯款資料");
+  }
+  if (!profile?.passbookCoverUrl) missing.push("存摺附件");
+  return missing;
+}
+
+function getVisitorLifecycleLabel(request: UserRegistrationRequest) {
+  if (isAssignableVisitor(request)) return "可派案";
+  const inviteStatus = request.visitorRegistrationProfile?.authInviteStatus ?? "not_sent";
+  if (inviteStatus === "activated") return "待補資料";
+  if (inviteStatus === "sent") return "待啟用";
+  return "待邀請";
+}
+
+function isAssignableVisitor(request: UserRegistrationRequest) {
+  const profile = request.visitorRegistrationProfile;
+  return (
+    profile?.authInviteStatus === "activated" &&
+    profile.profileCompletionStatus === "verified" &&
+    profile.remittanceReviewStatus === "approved" &&
+    profile.remittanceReady
+  );
+}
+
 function matchesVisitorRegistryView(request: UserRegistrationRequest, view: VisitorRegistryView) {
   const profile = request.visitorRegistrationProfile;
 
@@ -1658,17 +1764,29 @@ function matchesVisitorRegistryView(request: UserRegistrationRequest, view: Visi
     const inviteStatus = profile?.authInviteStatus ?? "not_sent";
     return inviteStatus !== "sent" && inviteStatus !== "activated";
   }
-  if (view === "needs_profile") {
-    return profile?.profileCompletionStatus !== "verified";
+  if (view === "awaiting_activation") {
+    return profile?.authInviteStatus === "sent";
   }
-  if (view === "needs_remittance") {
-    return !profile?.remittanceReady || profile.remittanceReviewStatus !== "approved";
+  if (view === "needs_profile") {
+    return profile?.authInviteStatus === "activated" && !isAssignableVisitor(request);
   }
   if (view === "assignable") {
-    return profile?.profileCompletionStatus === "verified" && Boolean(profile.remittanceReady);
+    return isAssignableVisitor(request);
   }
 
   return true;
+}
+
+function formatDateTime(value: string) {
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime())
+    ? value
+    : new Intl.DateTimeFormat("zh-TW", {
+        month: "numeric",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(parsed);
 }
 
 export function VisitorRegistrationForm({
