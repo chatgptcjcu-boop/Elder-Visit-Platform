@@ -78,7 +78,7 @@
 - [x] `npm run lint`
 - [x] `npm run build`
 - [x] Design / UX review completed
-- [ ] Release state checked separately from local build success
+- [x] Release state checked separately from local build success
 
 ## Lessons to Capture
 
@@ -87,5 +87,5 @@
 ## Completion Notes
 
 - What changed: 註冊證件照新增相機/相簿入口；後台增加受權限保護的證件照 ZIP 匯出；新增私有 Storage bucket migration；新照片可優先轉存 Storage，舊 data URL 仍可匯出。
-- What was verified: `npm run typecheck -- --pretty false`、`npm run lint`、`npm run build`；本地 `/register` 可看到兩種照片入口；訪員角色呼叫 ZIP 匯出 API 回傳 403。
-- What remains undecided: 正式 Supabase 執行 `0029` 後是否另安排既有照片批次搬移；AI 去背仍屬後續階段。
+- What was verified: `npm run typecheck -- --pretty false`、`npm run lint`、`npm run build`；本地 `/register` 可看到兩種照片入口；訪員角色呼叫 ZIP 匯出 API 回傳 403；Vercel 線上 `/register` 已顯示相簿入口；線上 ZIP 實際包含 `證件照/EV-115-YH-CIV-1150_證件照.jpg`。
+- What remains undecided: 正式 Supabase 尚需執行 `0029` 以啟用新照片的私有 Storage 落檔；其後是否另安排既有照片批次搬移；AI 去背仍屬後續階段。
