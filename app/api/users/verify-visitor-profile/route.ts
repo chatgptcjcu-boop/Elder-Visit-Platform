@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       {
         error: {
           code: "VERIFY_FAILED",
-          message: "確認訪員資料失敗，請確認 Supabase 管理端環境設定。",
+          message: "確認訪員資料失敗，請稍後再試；若持續失敗，請聯絡系統管理者。",
         },
       },
       { status: 500 },

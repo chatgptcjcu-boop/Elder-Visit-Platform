@@ -60,3 +60,11 @@
 - **Rule:** Keep `wrangler.jsonc` and `open-next.config.ts` committed, and make the self-reference service match the actual Worker name before relying on auto deployments.
 - **Evidence:** `wrangler.jsonc`, `open-next.config.ts`, and `docs/tasks/2026-05-22-cloudflare-deployment-config.md`.
 - **Added on:** 2026-05-22
+
+## Lesson: Approval actions must be idempotent and visibly terminal
+
+- **Trigger:** A manager tapped visitor approval again because the mobile card did not clearly show that processing had completed.
+- **Cause:** A final-state action remained visually actionable while the completion message was separated from the card.
+- **Rule:** Approval workflows must treat completed decisions as terminal on the server and immediately remove or relabel completed actions in the interface.
+- **Evidence:** `lib/domain/user-management.ts` and `components/workspace/users-panel.tsx`.
+- **Added on:** 2026-05-24

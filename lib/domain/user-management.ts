@@ -122,7 +122,7 @@ export async function getUserManagementOverview() {
       "新訪員填寫清冊欄位：姓名、性別、身分證字號、民政/社政、職稱、公務信箱與教育訓練。",
       "系統依單位、姓名、職稱產生暱稱，並建立白底一寸證件照預覽。",
       "承辦管理者先審核工作空間與角色，再送社會局覆核訪查資格。",
-      "覆核通過後建立 workspace_membership 與 visitor_profiles，派案才可選用。",
+      "覆核通過後建立訪員身分與工作空間權限，完成資料確認後才可納入派案。",
     ],
   };
 }
@@ -220,13 +220,13 @@ export async function submitVisitorRegistration(
 
   const supabaseResult = await insertSupabaseRegistrationRequest(request);
   if (!supabaseResult.request) {
-    throw new Error(supabaseResult.warning ?? "註冊資料寫入 Supabase 失敗。");
+    throw new Error(supabaseResult.warning ?? "註冊資料尚未儲存，請稍後再試；若持續失敗，請聯絡系統管理者。");
   }
 
   return {
     request: supabaseResult.request,
     message: `${displayName} 的訪員註冊資料已送出。`,
-    nextStep: "已正式寫入 Supabase，承辦管理者可在使用者管理頁審核。",
+    nextStep: "承辦管理者可在使用者管理頁進行審核。",
     source: "supabase",
     warning: null,
   };
@@ -242,7 +242,7 @@ export async function reviewRegistration(
       source: "supabase",
     };
   }
-  throw new Error("核准加入沒有寫入 Supabase，請確認註冊資料為正式資料庫資料。");
+  throw new Error("核准未完成，請重新整理後再試；若持續失敗，請聯絡系統管理者。");
 }
 
 export async function inviteApprovedVisitor(
@@ -294,8 +294,8 @@ export async function inviteApprovedVisitor(
         requestId,
         email: request.email,
         status: "failed",
-        message: inviteResult.error?.message ?? "Supabase Auth 邀請信發送失敗。",
-        nextStep: "請確認 Supabase Email Auth、SMTP 或專案寄信限制，修正後可重寄邀請。",
+        message: "登入邀請發送失敗。",
+        nextStep: "請確認系統寄信設定後再重寄邀請。",
       };
     }
 
@@ -313,8 +313,8 @@ export async function inviteApprovedVisitor(
       requestId,
       email: "",
       status: "failed",
-      message: "發送登入邀請失敗，可能是 Supabase 管理端環境尚未設定。",
-      nextStep: "請確認 NEXT_PUBLIC_SUPABASE_URL 與 SUPABASE_SERVICE_ROLE_KEY 已設定。",
+      message: "登入邀請目前無法發送。",
+      nextStep: "請稍後重試；若持續失敗，請聯絡系統管理者。",
     };
   }
 }
@@ -351,6 +351,22 @@ async function reviewSupabaseRegistration(
 ): Promise<UserRegistrationDecisionResult | null> {
   try {
     const supabase = createAdminClient();
+    const { data: currentRequest, error: currentError } = await (
+      supabase as unknown as RegistrationRequestByIdClient
+    )
+      .from("workspace_registration_requests")
+      .select("*")
+      .eq("id", decision.requestId)
+      .single();
+
+    if (currentError || !currentRequest) {
+      return null;
+    }
+
+    if (currentRequest.status === "approved" || currentRequest.status === "rejected") {
+      return createRegistrationDecisionResult(currentRequest, true);
+    }
+
     const reviewedAt = new Date().toISOString();
     const status = decision.decision === "approve" ? "approved" : "rejected";
     const reviewNote =
@@ -373,33 +389,48 @@ async function reviewSupabaseRegistration(
         profile_return_reason: decision.decision === "reject" ? reviewNote : null,
       })
       .eq("id", decision.requestId)
+      .eq("status", currentRequest.status)
       .select("*")
-      .single();
+      .maybeSingle();
 
     if (error || !data) {
-      return null;
+      const { data: latestRequest } = await (supabase as unknown as RegistrationRequestByIdClient)
+        .from("workspace_registration_requests")
+        .select("*")
+        .eq("id", decision.requestId)
+        .single();
+      return latestRequest ? createRegistrationDecisionResult(latestRequest, true) : null;
     }
 
     if (decision.decision === "approve") {
       await activateApprovedRegistration(supabase, data, decision);
     }
 
-    const request = mapRegistrationRow(data);
-    return {
-      requestId: request.id,
-      status: request.status,
-      message:
-        decision.decision === "approve"
-          ? `${request.fullName} 已核准加入 ${request.requestedWorkspaceName}。`
-          : `${request.fullName} 的加入申請已退回。`,
-      nextStep:
-        decision.decision === "approve"
-          ? `已更新 Supabase 審核狀態，並建立 workspace_membership，角色為 ${decision.roleKey}。`
-          : "已更新 Supabase 審核狀態，不建立 Workspace 成員關聯。",
-    };
+    return createRegistrationDecisionResult(data, false);
   } catch {
     return null;
   }
+}
+
+function createRegistrationDecisionResult(
+  row: WorkspaceRegistrationRequestRow,
+  previouslyCompleted: boolean,
+): UserRegistrationDecisionResult {
+  const request = mapRegistrationRow(row);
+  const isApproved = request.status === "approved";
+
+  return {
+    requestId: request.id,
+    status: request.status,
+    message: isApproved
+      ? `${request.fullName} 已通過加入申請。`
+      : `${request.fullName} 的加入申請已退回。`,
+    nextStep: previouslyCompleted
+      ? "此申請已完成審核，無需重複操作。"
+      : isApproved
+        ? "後續可進行登入邀請與資料確認。"
+        : "如需重新提出申請，請由申請人補正資料後再次送出。",
+  };
 }
 
 async function activateApprovedRegistration(
@@ -625,10 +656,11 @@ async function insertSupabaseRegistrationRequest(
       .single();
 
     if (error || !data) {
+      console.error("Visitor registration insert failed.", error);
       return {
         request: null,
         source: "supabase",
-        warning: formatSupabaseWriteError(error),
+        warning: "註冊資料尚未儲存，請稍後再試；若持續失敗，請聯絡系統管理者。",
       };
     }
 
@@ -638,42 +670,17 @@ async function insertSupabaseRegistrationRequest(
       warning: null,
     };
   } catch (error) {
+    console.error("Visitor registration connection failed.", error);
     return {
       request: null,
       source: "supabase",
-      warning:
-        error instanceof Error
-          ? `Supabase 管理端連線失敗：${error.message}`
-          : "Supabase 管理端環境尚未設定，註冊資料未寫入。請確認正式環境變數。",
+      warning: "註冊資料尚未儲存，請稍後再試；若持續失敗，請聯絡系統管理者。",
     };
   }
 }
 
 function isSupportedCompactImageDataUrl(value: string) {
   return value.startsWith("data:image/") && value.length <= 1_000_000;
-}
-
-function formatSupabaseWriteError(error: unknown) {
-  if (!error || typeof error !== "object") {
-    return "Supabase 寫入失敗，請確認 0026/0027/0028 migration、資料表欄位與 service role key。";
-  }
-
-  const supabaseError = error as {
-    message?: string;
-    code?: string;
-    details?: string;
-    hint?: string;
-  };
-  const parts = [
-    supabaseError.message,
-    supabaseError.code ? `代碼：${supabaseError.code}` : null,
-    supabaseError.details ? `細節：${supabaseError.details}` : null,
-    supabaseError.hint ? `提示：${supabaseError.hint}` : null,
-  ].filter(Boolean);
-
-  return parts.length > 0
-    ? `Supabase 寫入失敗：${parts.join("；")}`
-    : "Supabase 寫入失敗，請確認 0026/0027/0028 migration、資料表欄位與 service role key。";
 }
 
 async function getSupabaseActiveWorkspace() {
@@ -1025,18 +1032,25 @@ type RegistrationRequestWriteClient = {
 type RegistrationRequestReviewClient = {
   from(table: "workspace_registration_requests"): {
     update(row: Record<string, unknown>): {
-      eq(column: string, value: string): {
-        select(query: string): {
-          single(): Promise<{
-            data: WorkspaceRegistrationRequestRow | null;
-            error: unknown;
-          }>;
-        };
-      } & PromiseLike<{
-        data: WorkspaceRegistrationRequestRow | null;
-        error: unknown;
-      }>;
+      eq(column: string, value: string): RegistrationRequestReviewFilter;
     };
+  };
+};
+
+type RegistrationRequestReviewFilter = PromiseLike<{
+  data: WorkspaceRegistrationRequestRow | null;
+  error: unknown;
+}> & {
+  eq(column: string, value: string): RegistrationRequestReviewFilter;
+  select(query: string): {
+    single(): Promise<{
+      data: WorkspaceRegistrationRequestRow | null;
+      error: unknown;
+    }>;
+    maybeSingle(): Promise<{
+      data: WorkspaceRegistrationRequestRow | null;
+      error: unknown;
+    }>;
   };
 };
 

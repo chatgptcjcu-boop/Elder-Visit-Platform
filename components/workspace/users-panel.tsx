@@ -19,6 +19,7 @@ import {
   Trash2,
   UserPlus,
   Volume2,
+  X,
   XCircle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -105,6 +106,12 @@ export function UsersPanel() {
   useEffect(() => {
     void loadUsers();
   }, []);
+
+  useEffect(() => {
+    if (!result) return;
+    const timeout = window.setTimeout(() => setResult(null), 5000);
+    return () => window.clearTimeout(timeout);
+  }, [result]);
 
   useEffect(() => {
     setPendingIndex((current) => Math.min(current, Math.max(pendingRequests.length - 1, 0)));
@@ -427,8 +434,8 @@ export function UsersPanel() {
               setVisitorProfiles(json.data ?? visitorProfiles);
               setProfileMessage(
                 json.source === "supabase"
-                  ? "已寫入 Supabase visitor_profiles，派案會優先使用正式資格檔。"
-                  : json.warning ?? "已暫存督導/訪員資格檔。",
+                  ? "訪員資格資料已儲存，派案將使用已確認資料。"
+                  : "資格資料暫時無法正式更新，請稍後再試。",
               );
             }}
           />
@@ -462,9 +469,19 @@ export function UsersPanel() {
       )}
 
       {result && (
-        <section className="rounded-lg border bg-card p-4">
-          <p className="font-semibold">{result.message}</p>
-          <p className="mt-1 text-sm text-muted-foreground">{result.nextStep}</p>
+        <section
+          aria-live="polite"
+          className="fixed bottom-20 left-4 right-4 z-50 rounded-lg border border-primary/20 bg-card p-4 shadow-lg sm:bottom-auto sm:left-auto sm:right-6 sm:top-20 sm:w-96"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-semibold">{result.message}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{result.nextStep}</p>
+            </div>
+            <Button type="button" variant="ghost" size="icon" aria-label="關閉通知" onClick={() => setResult(null)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </section>
       )}
 
@@ -778,7 +795,7 @@ function PendingReviewDeck({
                 onClick={() => decide("approve")}
               >
                 <CheckCircle2 className="h-4 w-4" />
-                {isReviewing ? "處理中" : "核准加入"}
+                {isReviewing ? "審核處理中..." : "核准加入"}
               </Button>
               <Button
                 type="button"
@@ -795,7 +812,7 @@ function PendingReviewDeck({
                 variant="ghost"
                 className="w-full sm:w-auto"
                 onClick={() => move(1)}
-                disabled={currentIndex >= requests.length - 1}
+                disabled={isReviewing || currentIndex >= requests.length - 1}
               >
                 略過
                 <ArrowRight className="h-4 w-4" />
@@ -1706,7 +1723,7 @@ export function VisitorRegistrationForm({
       return;
     }
 
-    onSubmitted(json.data.request, `${json.data.message}（已正式寫入 Supabase）`);
+    onSubmitted(json.data.request, json.data.message);
     setForm(initialForm);
     setSubmitMessage(null);
   }
