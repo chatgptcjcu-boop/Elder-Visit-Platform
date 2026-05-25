@@ -92,3 +92,11 @@
 - **Rule:** Store passbook images in a private bucket and export them through an explicit, permission-checked ZIP action with a sensitive-data warning and visitor-code filenames, separately from headshot exports.
 - **Evidence:** `lib/domain/visitor-documents.ts`, `app/api/users/export-passbooks/route.ts`, and `components/workspace/users-panel.tsx`.
 - **Added on:** 2026-05-25
+
+## Lesson: Public collection entry must not expose demo credentials
+
+- **Trigger:** The production site is opened for volunteer registration intake before account invitation email is enabled.
+- **Cause:** A login-first page that lists test users and passwords exposes internal testing access and obscures the public submission workflow.
+- **Rule:** Route the public home entry to registration, keep login fields empty, and store any demo credential reference only in a locally ignored file.
+- **Evidence:** `app/page.tsx`, `components/auth/login-panel.tsx`, `components/auth/register-panel.tsx`, and `.gitignore`.
+- **Added on:** 2026-05-25

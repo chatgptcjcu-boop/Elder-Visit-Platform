@@ -9,6 +9,7 @@ logs/
 .env
 .env.*
 !.env.example
+private/
 
 # Dependencies
 node_modules/
