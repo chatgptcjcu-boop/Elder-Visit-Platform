@@ -52,7 +52,7 @@
 | Owner | Task | Write Scope | Expected Output |
 | --- | --- | --- | --- |
 | Planner / Lead | Frame goal, scope, risks, and acceptance criteria | Planning docs | Approved task brief |
-| Builder | Implement the functional change | To be filled after inspection | Working change |
+| Builder | Implement the functional change | Public auth entry components, root route, local credential ignore rule | Working change |
 | Design / UX Agent | Review hierarchy, copy, color, icons, and field usability | Visible UI only | Design review notes / corrections |
 | Reviewer / QA | Inspect edge cases and verify against requirements | Diff + test surface | Review findings |
 | Release / Ops | Run final checks and confirm deploy state | Release path | Verified release status |
@@ -71,7 +71,7 @@
 - [x] `npm run lint`
 - [x] `npm run build`
 - [x] Design / UX review completed
-- [ ] Release state checked separately from local build success
+- [x] Release state checked separately from local build success
 
 ## Lessons to Capture
 
@@ -80,6 +80,6 @@
 ## Completion Notes
 
 - 實際修改：公開首頁導向註冊入口；登入頁移除示範帳密與預填資料；註冊頁加入四步驟申請流程；測試帳密改存本機忽略檔。
-- 已完成驗證：`npm run build`、建置完成後依序執行 `npm run typecheck -- --pretty false` 與 `npm run lint`；本機正式模式回歸確認公開登入 HTML 不含測試憑證，手動輸入測試帳密仍可登入。
+- 已完成驗證：`npm run build`、建置完成後依序執行 `npm run typecheck -- --pretty false` 與 `npm run lint`；本機正式模式回歸確認公開登入 HTML 不含測試憑證，手動輸入測試帳密仍可登入；推送 GitHub 後已確認 Vercel 正式網址呈現新版註冊入口與乾淨登入頁。
 - 設計判斷：收件期間以「訪員註冊」作為公開主要入口，登入僅提供已收到邀請或既有帳號者使用，避免同一畫面混用公開申請與內部測試。
 - 尚待後續決策：正式寄信 SMTP 與 production 是否完全關閉 demo fallback。

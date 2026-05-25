@@ -57,7 +57,7 @@ Source brief: `docs/tasks/2026-05-25-public-visitor-registration-entry.md`
 - [x] `npm run build` completed.
 - [x] Durable lessons were considered for `LESSONS.md`.
 - [x] Design / UX review completed.
-- [ ] Local verification and live deployment state were reported separately.
+- [x] Local verification and live deployment state were reported separately.
 
 ## Completion Prompt
 
