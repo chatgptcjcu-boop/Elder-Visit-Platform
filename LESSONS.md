@@ -100,3 +100,11 @@
 - **Rule:** Route the public home entry to registration, keep login fields empty, and store any demo credential reference only in a locally ignored file.
 - **Evidence:** `app/page.tsx`, `components/auth/login-panel.tsx`, `components/auth/register-panel.tsx`, and `.gitignore`.
 - **Added on:** 2026-05-25
+
+## Lesson: Batch review must reuse single-record governance logic
+
+- **Trigger:** Managers need to approve dozens of visitor registrations in one action.
+- **Cause:** A direct batch update would skip account creation, workspace membership, visitor profile, visitor code, and QR code side effects that the single approval path already owns.
+- **Rule:** Batch review should iterate through the same domain function used by single-record review and only add aggregation, confirmation, and result reporting around it.
+- **Evidence:** `lib/domain/user-management.ts`, `app/api/users/batch-review/route.ts`, and `components/workspace/users-panel.tsx`.
+- **Added on:** 2026-05-28

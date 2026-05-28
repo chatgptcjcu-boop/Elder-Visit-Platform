@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { workspaceRoles } from "@/lib/domain/permissions";
 import { visitors as defaultVisitors } from "@/lib/domain/assignments";
 import type {
+  UserRegistrationBatchDecisionResult,
   UserRegistrationDecisionResult,
   UserRegistrationRequest,
   VisitorInvitationResult,
@@ -59,6 +60,7 @@ export function UsersPanel() {
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
   const [registrationMessage, setRegistrationMessage] = useState<string | null>(null);
   const [reviewingRequestId, setReviewingRequestId] = useState<string | null>(null);
+  const [batchReviewing, setBatchReviewing] = useState(false);
   const [activeTab, setActiveTab] = useState<UserManagementTab>("overview");
   const [pendingIndex, setPendingIndex] = useState(0);
   const pendingRequests = useMemo(
@@ -187,6 +189,55 @@ export function UsersPanel() {
       }
     } finally {
       setReviewingRequestId(null);
+    }
+  }
+
+  async function approveAllPending() {
+    if (!payload || pendingRequests.length === 0 || batchReviewing) return;
+    const confirmed = window.confirm(
+      `確定要一次核准目前 ${pendingRequests.length} 筆待審核申請？\n\n核准後會建立訪員帳號資料與工作空間成員，後續仍需發送登入邀請與確認補件。`,
+    );
+    if (!confirmed) return;
+
+    setBatchReviewing(true);
+    setResult(null);
+    try {
+      const response = await fetch("/api/users/batch-review", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          requestIds: pendingRequests.map((request) => request.id),
+          decision: "approve",
+          workspaceId: payload.workspace.id,
+          note: "使用者管理頁整批核准",
+        }),
+      });
+      const json = (await response.json()) as {
+        data?: UserRegistrationBatchDecisionResult;
+        error?: { message?: string };
+      };
+
+      if (!response.ok || !json.data) {
+        setResult({
+          requestId: "batch",
+          status: "pending_social_bureau_review",
+          message: json.error?.message ?? "整批核准沒有完成。",
+          nextStep: "請確認目前登入角色有審核權限，或重新整理頁面後再試一次。",
+        });
+        return;
+      }
+
+      setResult({
+        requestId: "batch",
+        status: json.data.failed > 0 ? "pending_social_bureau_review" : "approved",
+        message: json.data.message,
+        nextStep: json.data.nextStep,
+        source: json.data.source,
+      });
+      await loadUsers();
+      setPendingIndex(0);
+    } finally {
+      setBatchReviewing(false);
     }
   }
 
@@ -345,7 +396,9 @@ export function UsersPanel() {
               currentIndex={pendingIndex}
               onIndexChange={setPendingIndex}
               onReview={review}
+              onBatchApprove={approveAllPending}
               requests={pendingRequests}
+              batchReviewing={batchReviewing}
               reviewingRequestId={reviewingRequestId}
             />
           )}
@@ -647,17 +700,22 @@ function PendingReviewDeck({
   onIndexChange,
   canReviewUsers,
   reviewingRequestId,
+  batchReviewing,
   onReview,
+  onBatchApprove,
 }: {
   requests: UserRegistrationRequest[];
   currentIndex: number;
   onIndexChange: (index: number) => void;
   canReviewUsers: boolean;
   reviewingRequestId: string | null;
+  batchReviewing: boolean;
   onReview: (request: UserRegistrationRequest, decision: "approve" | "reject") => Promise<void>;
+  onBatchApprove: () => Promise<void>;
 }) {
   const currentRequest = requests[currentIndex] ?? null;
   const isReviewing = currentRequest ? reviewingRequestId === currentRequest.id : false;
+  const isBusy = isReviewing || batchReviewing;
 
   function move(delta: number) {
     if (requests.length === 0) return;
@@ -703,7 +761,17 @@ function PendingReviewDeck({
             手機上固定看一筆，核准或退回後自動停在下一筆，避免長清單反覆滑動。
           </p>
         </div>
-        <div className="flex items-center justify-between gap-2 sm:justify-end">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+          <Button
+            type="button"
+            size="sm"
+            onClick={onBatchApprove}
+            disabled={!canReviewUsers || batchReviewing || requests.length === 0}
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            {batchReviewing ? "整批核准中..." : `整批核准 ${requests.length} 筆`}
+          </Button>
+          <div className="flex items-center justify-between gap-2 sm:justify-end">
           <Button type="button" variant="outline" size="sm" onClick={() => move(-1)} disabled={currentIndex === 0}>
             <ArrowLeft className="h-4 w-4" />
             上一筆
@@ -721,7 +789,11 @@ function PendingReviewDeck({
             下一筆
             <ArrowRight className="h-4 w-4" />
           </Button>
+          </div>
         </div>
+      </div>
+      <div className="mt-3 rounded-md border border-primary/20 bg-primary/5 p-3 text-sm leading-6 text-muted-foreground">
+        整批核准會處理目前待審核清單的全部申請；核准後仍需到「訪員名冊」寄送登入邀請與追蹤補件。
       </div>
 
       <article className="mt-4 rounded-lg border bg-background p-4">
@@ -780,7 +852,7 @@ function PendingReviewDeck({
               <Button
                 type="button"
                 className="w-full"
-                disabled={!canReviewUsers || isReviewing}
+                disabled={!canReviewUsers || isBusy}
                 onClick={() => decide("approve")}
               >
                 <CheckCircle2 className="h-4 w-4" />
@@ -790,7 +862,7 @@ function PendingReviewDeck({
                 type="button"
                 variant="outline"
                 className="w-full"
-                disabled={!canReviewUsers || isReviewing}
+                disabled={!canReviewUsers || isBusy}
                 onClick={() => decide("reject")}
               >
                 <XCircle className="h-4 w-4" />
@@ -801,7 +873,7 @@ function PendingReviewDeck({
                 variant="ghost"
                 className="w-full sm:w-auto"
                 onClick={() => move(1)}
-                disabled={isReviewing || currentIndex >= requests.length - 1}
+                disabled={isBusy || currentIndex >= requests.length - 1}
               >
                 略過
                 <ArrowRight className="h-4 w-4" />

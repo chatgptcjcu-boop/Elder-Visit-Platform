@@ -278,6 +278,24 @@ export type UserRegistrationDecisionResult = {
   source?: "supabase";
 };
 
+export type UserRegistrationBatchDecision = {
+  requestIds: string[];
+  decision: "approve";
+  workspaceId: string;
+  note: string;
+};
+
+export type UserRegistrationBatchDecisionResult = {
+  total: number;
+  approved: number;
+  skipped: number;
+  failed: number;
+  results: UserRegistrationDecisionResult[];
+  message: string;
+  nextStep: string;
+  source?: "supabase";
+};
+
 export type VisitorInvitationResult = {
   requestId: string;
   email: string;

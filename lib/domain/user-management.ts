@@ -3,6 +3,8 @@ import { getRuntimeEnvValue, hasRuntimeEnvValue } from "@/lib/runtime/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getHeadshotPreviewUrl, uploadRegistrationHeadshot } from "@/lib/domain/visitor-headshots";
 import type {
+  UserRegistrationBatchDecision,
+  UserRegistrationBatchDecisionResult,
   UserRegistrationDecision,
   UserRegistrationDecisionResult,
   UserRegistrationRequest,
@@ -246,6 +248,79 @@ export async function reviewRegistration(
     };
   }
   throw new Error("核准未完成，請重新整理後再試；若持續失敗，請聯絡系統管理者。");
+}
+
+export async function reviewRegistrationsBatch(
+  decision: UserRegistrationBatchDecision,
+): Promise<UserRegistrationBatchDecisionResult> {
+  const requestIds = Array.from(new Set(decision.requestIds.filter(Boolean)));
+  if (requestIds.length === 0) {
+    throw new Error("沒有可批次核准的待審核申請。");
+  }
+
+  const supabase = createAdminClient();
+  const results: UserRegistrationDecisionResult[] = [];
+  let approved = 0;
+  let skipped = 0;
+  let failed = 0;
+
+  for (const requestId of requestIds) {
+    const { data: currentRequest, error } = await (supabase as unknown as RegistrationRequestByIdClient)
+      .from("workspace_registration_requests")
+      .select("*")
+      .eq("id", requestId)
+      .single();
+
+    if (error || !currentRequest) {
+      failed += 1;
+      results.push({
+        requestId,
+        status: "pending_social_bureau_review",
+        message: "找不到這筆申請，無法核准。",
+        nextStep: "請重新整理使用者管理頁後再試一次。",
+        source: "supabase",
+      });
+      continue;
+    }
+
+    if (currentRequest.status === "approved" || currentRequest.status === "rejected") {
+      skipped += 1;
+      results.push({
+        ...createRegistrationDecisionResult(currentRequest, true),
+        source: "supabase",
+      });
+      continue;
+    }
+
+    const result = await reviewRegistration({
+      requestId,
+      decision: "approve",
+      roleKey: normalizeWorkspaceRoleKey(currentRequest.requested_role_key),
+      workspaceId: currentRequest.requested_workspace_id ?? decision.workspaceId,
+      note: decision.note,
+    });
+
+    if (result.status === "approved") {
+      approved += 1;
+    } else {
+      failed += 1;
+    }
+    results.push(result);
+  }
+
+  return {
+    total: requestIds.length,
+    approved,
+    skipped,
+    failed,
+    results,
+    message:
+      failed > 0
+        ? `整批核准完成：${approved} 筆通過、${skipped} 筆已處理、${failed} 筆未完成。`
+        : `整批核准完成：${approved} 筆通過、${skipped} 筆已處理。`,
+    nextStep: "請接續到已通過名冊發送登入邀請，或確認待補資料狀態。",
+    source: "supabase",
+  };
 }
 
 export async function inviteApprovedVisitor(
@@ -968,6 +1043,18 @@ async function createVisitorCode(
 function createVisitorQrCodePayload(visitorCode: string) {
   const siteUrl = (getRuntimeEnvValue("NEXT_PUBLIC_APP_URL") ?? "https://elder-visit-platform.vercel.app").replace(/\/+$/, "");
   return `${siteUrl}/verify/visitor/${visitorCode}`;
+}
+
+function normalizeWorkspaceRoleKey(value: string): WorkspaceRoleKey {
+  const allowed: WorkspaceRoleKey[] = [
+    "workspace_owner",
+    "workspace_manager",
+    "supervisor",
+    "visitor",
+    "auditor",
+    "viewer",
+  ];
+  return allowed.includes(value as WorkspaceRoleKey) ? (value as WorkspaceRoleKey) : "visitor";
 }
 
 type WorkspaceRegistrationRequestRow = {
