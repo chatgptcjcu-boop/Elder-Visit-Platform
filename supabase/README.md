@@ -37,6 +37,7 @@
 29. `0029_visitor_headshot_storage.sql`
 30. `0030_visitor_remittance_storage_qr_site.sql`
 31. `0031_backfill_approved_visitor_records.sql`
+32. `0032_registration_duplicate_guards.sql`
 
 最後再執行：
 
@@ -44,7 +45,7 @@
 
 ## 模組對應
 
-- 帳號、單位、工作空間、角色、權限：`0001`, `0009`, `0020`, `0021`, `0026`, `0027`
+- 帳號、單位、工作空間、角色、權限：`0001`, `0009`, `0020`, `0021`, `0026`, `0027`, `0032`
 - 啟動流程、藍圖、方案限制、AI 建議：`0002`, `0012`
 - 名冊、訪員、派案、訪查紀錄：`0003`, `0016`, `0017`, `0025`, `0026`, `0027`
 - 空間規則、停用復原、贊助企業聯名：`0004`, `0022`
@@ -66,6 +67,7 @@
 - 執行 `0029` 後，新註冊的證件照會優先保存至私有 `visitor-headshots` bucket；既有資料欄位照片仍可由後台匯出流程相容讀取。
 - 執行 `0030` 後，訪員新上傳的存摺封面會優先保存至私有 `visitor-remittance-documents` bucket，既有舊 Netlify QR 連結會修正到正式 Vercel 網址，登入邀請亦會累計寄送次數供後台辨識重寄紀錄。
 - 執行 `0031` 後，已核准但缺少帳號、工作空間訪員身分或正式訪員資料的紀錄，會從 `workspace_registration_requests` 補齊到 `accounts`、`workspace_memberships` 與 `visitor_profiles`。
+- 執行 `0032` 後，註冊查重會使用信箱、身分證字號與手機欄位的索引，讓公開註冊與後台大量審核在 200 位以上資料量時仍維持穩定。
 - 正式環境可設定 `NEXT_PUBLIC_APP_URL` 作為新產生 QR Code 的網址基底，例如 `https://elder-visit-platform.vercel.app`。
 - 目前程式已有 Supabase 連線設定，但 repository 仍有 mock fallback。資料表建立後，下一步才是逐頁把資料來源改成 Supabase 查詢。
 - RLS 已在 migration 中啟用，正式接資料時要以登入帳號、工作空間成員與角色權限做查詢範圍控管。

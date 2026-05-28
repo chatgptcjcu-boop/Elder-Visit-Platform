@@ -74,24 +74,29 @@ export function UsersPanel() {
     () => payload?.registrationRequests.filter((request) => request.status === "approved") ?? [],
     [payload?.registrationRequests],
   );
+  const formalApprovedRequests = useMemo(
+    () => approvedRequests.filter(isFormalVisitorRecord),
+    [approvedRequests],
+  );
+  const historicalApprovedCount = Math.max(approvedRequests.length - formalApprovedRequests.length, 0);
   const rejectedRequests = useMemo(
     () => payload?.registrationRequests.filter((request) => request.status === "rejected") ?? [],
     [payload?.registrationRequests],
   );
-  const approvedPhotoCount = approvedRequests.filter(
+  const approvedPhotoCount = formalApprovedRequests.filter(
     (request) => request.visitorRegistrationProfile?.headshotProcessedUrl,
   ).length;
-  const needsInviteCount = approvedRequests.filter((request) =>
+  const needsInviteCount = formalApprovedRequests.filter((request) =>
     matchesVisitorRegistryView(request, "needs_invite"),
   ).length;
-  const awaitingActivationCount = approvedRequests.filter((request) =>
+  const awaitingActivationCount = formalApprovedRequests.filter((request) =>
     matchesVisitorRegistryView(request, "awaiting_activation"),
   ).length;
-  const needsProfileCount = approvedRequests.filter((request) =>
+  const needsProfileCount = formalApprovedRequests.filter((request) =>
     matchesVisitorRegistryView(request, "needs_profile"),
   ).length;
   const needsCompletionCount = needsProfileCount;
-  const assignableCount = approvedRequests.filter((request) =>
+  const assignableCount = formalApprovedRequests.filter((request) =>
     matchesVisitorRegistryView(request, "assignable"),
   ).length;
 
@@ -312,10 +317,13 @@ export function UsersPanel() {
             <div className="grid gap-2 rounded-lg border bg-background p-3 text-sm">
               <StatusRow label="工作空間" value={payload.workspace.name} />
               <StatusRow label="註冊總量" value={`${payload.registrationRequests.length} 筆`} />
-              <StatusRow label="已通過" value={`${approvedRequests.length} 筆`} />
+              <StatusRow label="正式名冊" value={`${formalApprovedRequests.length} 位`} />
               <StatusRow label="可派案訪員" value={`${assignableCount} 位`} />
               <StatusRow label="已退回" value={`${rejectedRequests.length} 筆`} />
-              <StatusRow label="證件照" value={`${approvedPhotoCount}/${approvedRequests.length} 份`} />
+              <StatusRow label="證件照" value={`${approvedPhotoCount}/${formalApprovedRequests.length} 份`} />
+              {historicalApprovedCount > 0 && (
+                <StatusRow label="歷史申請" value={`${historicalApprovedCount} 筆不列入正式名冊`} />
+              )}
             </div>
           )}
         </div>
@@ -406,7 +414,7 @@ export function UsersPanel() {
           {activeTab === "approved" && (
           <ApprovedVisitorRegistry
             mode="approved"
-            requests={approvedRequests}
+            requests={formalApprovedRequests}
             onInvited={handleVisitorInvited}
             onVerified={handleVisitorVerified}
           />
@@ -415,7 +423,7 @@ export function UsersPanel() {
           {activeTab === "supplement" && (
             <ApprovedVisitorRegistry
               mode="supplement"
-              requests={approvedRequests.filter(
+              requests={formalApprovedRequests.filter(
                 (request) => matchesVisitorRegistryView(request, "needs_profile"),
               )}
               onInvited={handleVisitorInvited}
@@ -1826,6 +1834,10 @@ function isAssignableVisitor(request: UserRegistrationRequest) {
     profile.remittanceReviewStatus === "approved" &&
     profile.remittanceReady
   );
+}
+
+function isFormalVisitorRecord(request: UserRegistrationRequest) {
+  return request.status === "approved" && Boolean(request.visitorRegistrationProfile?.visitorCode);
 }
 
 function matchesVisitorRegistryView(request: UserRegistrationRequest, view: VisitorRegistryView) {

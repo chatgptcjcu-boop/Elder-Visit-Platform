@@ -116,3 +116,11 @@
 - **Rule:** When approval side effects add new destination tables, include an idempotent backfill migration and avoid hard-coded list limits that hide older operational records.
 - **Evidence:** `supabase/migrations/0031_backfill_approved_visitor_records.sql` and `lib/domain/user-management.ts`.
 - **Added on:** 2026-05-28
+
+## Lesson: Public registration must check duplicates before insert
+
+- **Trigger:** Repeated visitor applications created more approved registration rows than formal visitor profiles.
+- **Cause:** The public registration endpoint accepted new rows before checking the formal roster and existing pending or approved applications.
+- **Rule:** Check the formal visitor profile first, then pending or approved registration requests, using email, official email, national ID and phone before inserting a new application; backend rosters and exports should count formal visitor records, not raw application rows.
+- **Evidence:** `lib/domain/user-management.ts`, `components/workspace/users-panel.tsx`, and `supabase/migrations/0032_registration_duplicate_guards.sql`.
+- **Added on:** 2026-05-29

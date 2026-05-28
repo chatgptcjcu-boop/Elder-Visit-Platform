@@ -164,6 +164,8 @@ function getInitialProfileCompletionStatus(submission: VisitorRegistrationSubmis
 export async function submitVisitorRegistration(
   submission: VisitorRegistrationSubmission,
 ): Promise<VisitorRegistrationSubmissionResult> {
+  const normalizedSubmission = normalizeVisitorRegistrationSubmission(submission);
+
   if (!submission.headshotOriginalUrl || !submission.headshotProcessedUrl) {
     throw new Error("請先拍攝或選擇自拍證件照後再送出註冊。");
   }
@@ -174,30 +176,30 @@ export async function submitVisitorRegistration(
     throw new Error("自拍證件照預覽格式或大小不符合保存規格，請重新拍攝或選擇較小的照片。");
   }
 
-  const displayName = createVisitorDisplayName(submission);
+  const displayName = createVisitorDisplayName(normalizedSubmission);
   const submittedAt = new Date().toISOString();
-  const profileCompletionStatus = getInitialProfileCompletionStatus(submission);
+  const profileCompletionStatus = getInitialProfileCompletionStatus(normalizedSubmission);
   const request: UserRegistrationRequest = {
     id: `reg_${Date.now()}`,
-    email: submission.email,
-    fullName: submission.fullName,
+    email: normalizedSubmission.email,
+    fullName: normalizedSubmission.fullName,
     requestedUnitName: `${submission.rootUnitName}${
       submission.departmentName === "其他"
         ? submission.departmentOther || "其他單位"
         : submission.departmentName
     }`,
-    requestedWorkspaceId: submission.requestedWorkspaceId,
-    requestedWorkspaceName: submission.requestedWorkspaceName,
+    requestedWorkspaceId: normalizedSubmission.requestedWorkspaceId,
+    requestedWorkspaceName: normalizedSubmission.requestedWorkspaceName,
     requestedRoleKey: "visitor",
-    status: submission.trainingCompleted ? "pending_social_bureau_review" : "pending_supervisor_review",
+    status: normalizedSubmission.trainingCompleted ? "pending_social_bureau_review" : "pending_supervisor_review",
     submittedAt,
-    reviewNote: submission.trainingCompleted
+    reviewNote: normalizedSubmission.trainingCompleted
       ? "訪員已送出註冊資料，待承辦與社會局覆核。"
       : "尚未完成教育訓練，需承辦先退補或保留待補。",
     visitorRegistrationProfile: {
-      ...submission,
+      ...normalizedSubmission,
       displayName,
-      socialBureauReviewStatus: submission.trainingCompleted ? "pending" : "not_sent",
+      socialBureauReviewStatus: normalizedSubmission.trainingCompleted ? "pending" : "not_sent",
       socialBureauReviewedAt: null,
       socialBureauReviewNote: null,
       registrationCode: null,
@@ -687,7 +689,7 @@ async function getSupabaseVisitorProfileRemittance(
     const { data, error } = await (supabase as unknown as VisitorProfileRemittanceClient)
       .from("visitor_profiles")
       .select(
-        "account_id, bank_account_last5, bank_name, bank_code, bank_branch_name, bank_account_name, passbook_cover_url, passbook_uploaded_at, remittance_review_status, remittance_ready",
+        "account_id, visitor_code, qr_code_payload, profile_completion_status, profile_reviewed_at, is_assignable, bank_account_last5, bank_name, bank_code, bank_branch_name, bank_account_name, passbook_cover_url, passbook_uploaded_at, remittance_review_status, remittance_ready",
       )
       .in("account_id", accountIds);
 
@@ -713,6 +715,7 @@ async function insertSupabaseRegistrationRequest(
     const workspace = await getSupabaseActiveWorkspace();
     const profile = request.visitorRegistrationProfile;
     const profileCompletionStatus = profile?.profileCompletionStatus ?? "incomplete";
+    await assertNoDuplicateVisitorRegistration(supabase, workspace?.id ?? request.requestedWorkspaceId, request);
     const { data, error } = await (supabase as unknown as RegistrationRequestWriteClient)
       .from("workspace_registration_requests")
       .insert({
@@ -795,6 +798,122 @@ async function insertSupabaseRegistrationRequest(
       source: "supabase",
       warning: "註冊資料尚未儲存，請稍後再試；若持續失敗，請聯絡系統管理者。",
     };
+  }
+}
+
+function normalizeVisitorRegistrationSubmission(
+  submission: VisitorRegistrationSubmission,
+): VisitorRegistrationSubmission {
+  return {
+    ...submission,
+    email: normalizeRegistrationEmail(submission.email),
+    fullName: submission.fullName.trim(),
+    officialEmail: normalizeRegistrationEmail(submission.officialEmail),
+    nationalId: normalizeRegistrationNationalId(submission.nationalId),
+    phone: normalizeRegistrationPhone(submission.phone),
+  };
+}
+
+function normalizeRegistrationEmail(value: string | null | undefined) {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function normalizeRegistrationNationalId(value: string | null | undefined) {
+  return (value ?? "").trim().toUpperCase();
+}
+
+function normalizeRegistrationPhone(value: string | null | undefined) {
+  return (value ?? "").replace(/[^\d+]/g, "");
+}
+
+function getDuplicateRegistrationChecks(request: UserRegistrationRequest) {
+  const profile = request.visitorRegistrationProfile;
+  const checks = [
+    {
+      column: "email",
+      value: normalizeRegistrationEmail(request.email),
+      label: "登入信箱",
+      profileColumn: null,
+    },
+    {
+      column: "official_email",
+      value: normalizeRegistrationEmail(profile?.officialEmail),
+      label: "公務信箱",
+      profileColumn: "official_email",
+    },
+    {
+      column: "national_id",
+      value: normalizeRegistrationNationalId(profile?.nationalId),
+      label: "身分證字號",
+      profileColumn: "national_id",
+    },
+    {
+      column: "phone",
+      value: normalizeRegistrationPhone(profile?.phone),
+      label: "手機",
+      profileColumn: "phone",
+    },
+  ];
+  const seen = new Set<string>();
+  return checks.filter((check) => {
+    if (!check.value) return false;
+    const key = `${check.column}:${check.value}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+async function assertNoDuplicateVisitorRegistration(
+  supabase: unknown,
+  workspaceId: string | null | undefined,
+  request: UserRegistrationRequest,
+) {
+  if (!workspaceId || request.requestedRoleKey !== "visitor") {
+    return;
+  }
+
+  const checks = getDuplicateRegistrationChecks(request);
+
+  for (const check of checks) {
+    if (check.profileColumn) {
+      const { data: existingProfiles, error: profileError } = await (supabase as VisitorDuplicateProfileLookupClient)
+        .from("visitor_profiles")
+        .select("id, full_name, visitor_code, status")
+        .eq("workspace_id", workspaceId)
+        .eq(check.profileColumn, check.value)
+        .limit(1);
+
+      if (profileError) {
+        throw new Error("目前無法完成重複資料檢查，請稍後再試。");
+      }
+
+      if (existingProfiles?.[0]) {
+        const name = existingProfiles[0].full_name || request.fullName;
+        const visitorCode = existingProfiles[0].visitor_code ? `（${existingProfiles[0].visitor_code}）` : "";
+        throw new Error(`${check.label} 已有正式訪員 ${name}${visitorCode}，請勿重複送出註冊。`);
+      }
+    }
+
+    const { data: existingRequests, error: requestError } = await (supabase as RegistrationDuplicateLookupClient)
+      .from("workspace_registration_requests")
+      .select("id, full_name, status, visitor_code")
+      .eq("requested_workspace_id", workspaceId)
+      .eq("requested_role_key", "visitor")
+      .neq("status", "rejected")
+      .eq(check.column, check.value)
+      .order("submitted_at", { ascending: false })
+      .limit(1);
+
+    if (requestError) {
+      throw new Error("目前無法完成重複資料檢查，請稍後再試。");
+    }
+
+    if (existingRequests?.[0]) {
+      const existing = existingRequests[0];
+      const statusText = existing.status === "approved" ? "已通過" : "待審核";
+      throw new Error(`${check.label} 已有${statusText}申請，請勿重複送出；如需修改資料，請洽承辦管理者。`);
+    }
   }
 }
 
@@ -882,12 +1001,14 @@ function mapRegistrationRow(
             authInvitedAt: row.auth_invited_at,
             authInviteSentCount: row.auth_invite_sent_count ?? 0,
             authActivatedAt: row.auth_activated_at,
-            profileCompletionStatus: normalizeProfileCompletionStatus(row.profile_completion_status),
+            profileCompletionStatus: normalizeProfileCompletionStatus(
+              remittanceProfile?.profile_completion_status ?? row.profile_completion_status,
+            ),
             profileSubmittedAt: row.profile_submitted_at,
-            profileReviewedAt: row.profile_reviewed_at,
+            profileReviewedAt: remittanceProfile?.profile_reviewed_at ?? row.profile_reviewed_at,
             profileReturnReason: row.profile_return_reason,
-            visitorCode: row.visitor_code,
-            qrCodePayload: row.qr_code_payload,
+            visitorCode: remittanceProfile?.visitor_code ?? row.visitor_code,
+            qrCodePayload: remittanceProfile?.qr_code_payload ?? row.qr_code_payload,
             bankAccountLast5: remittanceProfile?.bank_account_last5 ?? null,
             bankName: remittanceProfile?.bank_name ?? null,
             bankCode: remittanceProfile?.bank_code ?? null,
@@ -1115,6 +1236,11 @@ type RegistrationRequestClient = {
 
 type VisitorProfileRemittanceRow = {
   account_id: string;
+  visitor_code: string | null;
+  qr_code_payload: string | null;
+  profile_completion_status: string | null;
+  profile_reviewed_at: string | null;
+  is_assignable: boolean | null;
   bank_account_last5: string | null;
   bank_name: string | null;
   bank_code: string | null;
@@ -1134,6 +1260,51 @@ type VisitorProfileRemittanceClient = {
         error: unknown;
       }>;
     };
+  };
+};
+
+type DuplicateRegistrationRow = {
+  id: string;
+  full_name: string;
+  status: string;
+  visitor_code: string | null;
+};
+
+type RegistrationDuplicateLookupFilter = {
+  eq(column: string, value: string): RegistrationDuplicateLookupFilter;
+  neq(column: string, value: string): RegistrationDuplicateLookupFilter;
+  order(column: string, options: { ascending: boolean }): {
+    limit(count: number): Promise<{
+      data: DuplicateRegistrationRow[] | null;
+      error: unknown;
+    }>;
+  };
+};
+
+type RegistrationDuplicateLookupClient = {
+  from(table: "workspace_registration_requests"): {
+    select(query: string): RegistrationDuplicateLookupFilter;
+  };
+};
+
+type DuplicateVisitorProfileRow = {
+  id: string;
+  full_name: string;
+  visitor_code: string | null;
+  status: string;
+};
+
+type VisitorDuplicateProfileLookupFilter = {
+  eq(column: string, value: string): VisitorDuplicateProfileLookupFilter;
+  limit(count: number): Promise<{
+    data: DuplicateVisitorProfileRow[] | null;
+    error: unknown;
+  }>;
+};
+
+type VisitorDuplicateProfileLookupClient = {
+  from(table: "visitor_profiles"): {
+    select(query: string): VisitorDuplicateProfileLookupFilter;
   };
 };
 
