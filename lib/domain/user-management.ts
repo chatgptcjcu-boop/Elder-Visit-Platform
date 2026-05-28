@@ -650,7 +650,7 @@ async function getSupabaseRegistrationRequests(): Promise<UserRegistrationReques
       .from("workspace_registration_requests")
       .select("*")
       .order("submitted_at", { ascending: false })
-      .limit(100);
+      .limit(1000);
 
     if (error || !data) {
       return [];

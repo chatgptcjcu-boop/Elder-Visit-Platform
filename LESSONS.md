@@ -108,3 +108,11 @@
 - **Rule:** Batch review should iterate through the same domain function used by single-record review and only add aggregation, confirmation, and result reporting around it.
 - **Evidence:** `lib/domain/user-management.ts`, `app/api/users/batch-review/route.ts`, and `components/workspace/users-panel.tsx`.
 - **Added on:** 2026-05-28
+
+## Lesson: Approved rosters need reconciliation after schema changes
+
+- **Trigger:** Approved visitor counts did not match membership/profile counts after registration workflow changes.
+- **Cause:** Older records could be approved without all later side-effect tables being populated, while the UI read only the newest registration rows.
+- **Rule:** When approval side effects add new destination tables, include an idempotent backfill migration and avoid hard-coded list limits that hide older operational records.
+- **Evidence:** `supabase/migrations/0031_backfill_approved_visitor_records.sql` and `lib/domain/user-management.ts`.
+- **Added on:** 2026-05-28
