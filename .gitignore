@@ -4,6 +4,7 @@
 # Logs
 *.log
 logs/
+tmp/
 
 # Environment files
 .env

@@ -21,6 +21,7 @@ import {
   getPaymentEligibility,
   validateVisitSubmission,
 } from "@/lib/domain/visits";
+import { visitGuidePrecheck, visitGuideStages } from "@/lib/domain/visit-guide";
 
 const initialSubmission: Omit<VisitSubmission, "scheduleId"> = {
   visitResult: "訪視成功",
@@ -34,6 +35,13 @@ const initialSubmission: Omit<VisitSubmission, "scheduleId"> = {
   photoNames: [],
   notes: "",
 };
+
+const consentScopeOptions = [
+  { key: "internal_use", label: "內部服務紀錄" },
+  { key: "government_report", label: "政府成果回報" },
+  { key: "anonymous_kpi", label: "匿名統計分析" },
+  { key: "research_use", label: "健康資料串聯" },
+];
 
 export function VisitDialogueForm({
   elderCase,
@@ -218,6 +226,8 @@ export function VisitDialogueForm({
       </div>
 
       <div className="mt-5 space-y-4">
+        <VisitGuidePanel elderCase={elderCase} />
+
         <section className="rounded-lg border bg-background p-3">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div>
@@ -378,7 +388,7 @@ export function VisitDialogueForm({
       </div>
 
       <section className="mt-5 grid gap-4 lg:grid-cols-[1fr_1fr]">
-        <div className="rounded-lg border bg-background p-3">
+        <div id="visit-consent-section" className="scroll-mt-24 rounded-lg border bg-background p-3">
           <div className="flex items-center gap-2">
             <PenLine className="h-4 w-4 text-primary" />
             <h2 className="text-sm font-semibold">縣市政府版本個人資料蒐集聲明暨同意書</h2>
@@ -393,11 +403,11 @@ export function VisitDialogueForm({
             }
           />
           <div className="mt-3 flex flex-wrap gap-2">
-            {["internal_use", "government_report", "anonymous_kpi", "research_use"].map((scope) => {
-              const selected = submission.consentScope.includes(scope);
+            {consentScopeOptions.map((scope) => {
+              const selected = submission.consentScope.includes(scope.key);
               return (
                 <button
-                  key={scope}
+                  key={scope.key}
                   type="button"
                   className={`rounded-md border px-2 py-1 text-xs ${
                     selected ? "bg-primary text-primary-foreground" : "bg-card"
@@ -406,12 +416,12 @@ export function VisitDialogueForm({
                     setSubmission((current) => ({
                       ...current,
                       consentScope: selected
-                        ? current.consentScope.filter((item) => item !== scope)
-                        : [...current.consentScope, scope],
+                        ? current.consentScope.filter((item) => item !== scope.key)
+                        : [...current.consentScope, scope.key],
                     }))
                   }
                 >
-                  {scope}
+                  {scope.label}
                 </button>
               );
             })}
@@ -546,6 +556,99 @@ export function VisitDialogueForm({
 
 const missedVisitPhotoCategories = ["門口/門牌", "現場環境", "通知或留置紀錄", "其他佐證"];
 const optionalPhotoCategories = ["補充照片", "本人同意照片", "環境補充", "其他"];
+
+function VisitGuidePanel({ elderCase }: { elderCase: ElderCase }) {
+  return (
+    <section className="rounded-lg border border-primary/20 bg-primary/[0.03] p-3">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-primary">訪視指南</p>
+          <h2 className="mt-1 text-base font-semibold">依現場對話順序完成訪查</h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            先核對名冊，再依居住家庭、健康飲食、社交心情、服務同意與現場觀察分段完成，
+            避免訪員只看到一長串表單。
+          </p>
+        </div>
+        <div className="rounded-md border bg-card p-3 text-sm lg:min-w-72">
+          <p className="font-semibold">{visitGuidePrecheck.title}</p>
+          <p className="mt-1 leading-5 text-muted-foreground">{visitGuidePrecheck.goal}</p>
+          <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-1">
+            <GuideFact label="個案" value={elderCase.name} />
+            <GuideFact label="案號" value={elderCase.caseCode} />
+            <GuideFact label="區里" value={`${elderCase.district} ${elderCase.village}`} />
+            <GuideFact label="地址" value={elderCase.address} />
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {visitGuidePrecheck.checks.map((check) => (
+              <span key={check} className="rounded-md bg-secondary px-2 py-1 text-xs">
+                {check}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 grid gap-2">
+        {visitGuideStages.map((stage, index) => (
+          <details
+            key={stage.id}
+            className="rounded-lg border bg-card"
+            open={index === 0}
+          >
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-3 [&::-webkit-details-marker]:hidden">
+              <div>
+                <p className="text-sm font-semibold">{stage.title}</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">{stage.goal}</p>
+              </div>
+              <span className="shrink-0 rounded-md bg-secondary px-2 py-1 text-xs text-muted-foreground">
+                展開
+              </span>
+            </summary>
+            <div className="grid gap-3 border-t p-3 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+              <div className="rounded-md bg-secondary/60 p-3">
+                <p className="text-xs font-semibold text-primary">建議開場</p>
+                <p className="mt-2 text-sm leading-6">{stage.openingLine}</p>
+              </div>
+              <div className="grid gap-3">
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground">對應填表區</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {stage.formSections.map((section) => (
+                      <a
+                        key={`${stage.id}-${section.href}`}
+                        href={section.href}
+                        className="rounded-md border bg-background px-2 py-1 text-xs font-medium transition-colors hover:border-primary hover:text-primary"
+                      >
+                        {section.label}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+                <ul className="grid gap-2">
+                  {stage.checks.map((check) => (
+                    <li key={check} className="flex gap-2 text-sm leading-6 text-muted-foreground">
+                      <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-primary" />
+                      <span>{check}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function GuideFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md bg-background px-2 py-1">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="ml-2 font-medium">{value}</span>
+    </div>
+  );
+}
 
 function CareFormInput({
   field,

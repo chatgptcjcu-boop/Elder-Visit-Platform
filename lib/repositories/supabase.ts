@@ -223,10 +223,33 @@ async function getSupabaseCaseRegistry(): Promise<CaseRegistryItem[]> {
           case_code,
           name,
           birth_date,
+          gender,
           phone,
+          mobile_phone,
           address,
           district,
           village,
+          service_unit,
+          line_id_status,
+          line_id_note,
+          emergency_contact_name,
+          emergency_contact_relationship,
+          emergency_contact_phone,
+          household_city,
+          household_district,
+          household_village,
+          household_address,
+          residence_city,
+          residence_district,
+          residence_village,
+          residence_address,
+          residence_address_note,
+          solitary_status,
+          source_sheet_name,
+          source_row_number,
+          import_batch_code,
+          import_visit_result,
+          import_visitor_name,
           required_visitor_types,
           co_visit_required,
           risk_level,
@@ -253,10 +276,33 @@ async function getSupabaseCaseRegistry(): Promise<CaseRegistryItem[]> {
         caseCode: row.case_code,
         name: row.name,
         age: getAgeFromBirthDate(row.birth_date),
+        gender: row.gender,
         phone: row.phone ?? "未填寫",
+        mobilePhone: row.mobile_phone,
         address: row.address ?? "未填寫",
         district: row.district ?? "未填寫",
         village: row.village ?? "待補里別",
+        serviceUnit: row.service_unit,
+        lineIdStatus: row.line_id_status,
+        lineIdNote: row.line_id_note,
+        emergencyContactName: row.emergency_contact_name,
+        emergencyContactRelationship: row.emergency_contact_relationship,
+        emergencyContactPhone: row.emergency_contact_phone,
+        householdCity: row.household_city,
+        householdDistrict: row.household_district,
+        householdVillage: row.household_village,
+        householdAddress: row.household_address,
+        residenceCity: row.residence_city,
+        residenceDistrict: row.residence_district,
+        residenceVillage: row.residence_village,
+        residenceAddress: row.residence_address,
+        residenceAddressNote: row.residence_address_note,
+        solitaryStatus: row.solitary_status,
+        sourceSheetName: row.source_sheet_name,
+        sourceRowNumber: row.source_row_number,
+        importBatchCode: row.import_batch_code,
+        importVisitResult: row.import_visit_result,
+        importVisitorName: row.import_visitor_name,
         requiredVisitorTypes: normalizeRequiredVisitorTypes(row.required_visitor_types),
         coVisitRequired: Boolean(row.co_visit_required),
         riskLevel: normalizeRiskLevel(row.risk_level),
@@ -302,10 +348,33 @@ async function getSupabaseAssignmentCases(): Promise<ElderCase[]> {
         case_code,
         name,
         birth_date,
+        gender,
         phone,
+        mobile_phone,
         address,
         district,
         village,
+        service_unit,
+        line_id_status,
+        line_id_note,
+        emergency_contact_name,
+        emergency_contact_relationship,
+        emergency_contact_phone,
+        household_city,
+        household_district,
+        household_village,
+        household_address,
+        residence_city,
+        residence_district,
+        residence_village,
+        residence_address,
+        residence_address_note,
+        solitary_status,
+        source_sheet_name,
+        source_row_number,
+        import_batch_code,
+        import_visit_result,
+        import_visitor_name,
         required_visitor_types,
         co_visit_required,
         risk_level,
@@ -324,10 +393,33 @@ async function getSupabaseAssignmentCases(): Promise<ElderCase[]> {
     caseCode: row.case_code,
     name: row.name,
     age: getAgeFromBirthDate(row.birth_date),
+    gender: row.gender,
     phone: row.phone ?? "未填寫",
+    mobilePhone: row.mobile_phone,
     address: row.address ?? "未填寫",
     district: row.district ?? "未填寫",
     village: row.village ?? "待補里別",
+    serviceUnit: row.service_unit,
+    lineIdStatus: row.line_id_status,
+    lineIdNote: row.line_id_note,
+    emergencyContactName: row.emergency_contact_name,
+    emergencyContactRelationship: row.emergency_contact_relationship,
+    emergencyContactPhone: row.emergency_contact_phone,
+    householdCity: row.household_city,
+    householdDistrict: row.household_district,
+    householdVillage: row.household_village,
+    householdAddress: row.household_address,
+    residenceCity: row.residence_city,
+    residenceDistrict: row.residence_district,
+    residenceVillage: row.residence_village,
+    residenceAddress: row.residence_address,
+    residenceAddressNote: row.residence_address_note,
+    solitaryStatus: row.solitary_status,
+    sourceSheetName: row.source_sheet_name,
+    sourceRowNumber: row.source_row_number,
+    importBatchCode: row.import_batch_code,
+    importVisitResult: row.import_visit_result,
+    importVisitorName: row.import_visitor_name,
     requiredVisitorTypes: normalizeRequiredVisitorTypes(row.required_visitor_types),
     coVisitRequired: Boolean(row.co_visit_required),
     riskLevel: normalizeRiskLevel(row.risk_level),
@@ -601,10 +693,33 @@ type SupabaseCaseRow = {
   case_code: string;
   name: string;
   birth_date: string | null;
+  gender: string | null;
   phone: string | null;
+  mobile_phone: string | null;
   address: string | null;
   district: string | null;
   village: string | null;
+  service_unit: string | null;
+  line_id_status: string | null;
+  line_id_note: string | null;
+  emergency_contact_name: string | null;
+  emergency_contact_relationship: string | null;
+  emergency_contact_phone: string | null;
+  household_city: string | null;
+  household_district: string | null;
+  household_village: string | null;
+  household_address: string | null;
+  residence_city: string | null;
+  residence_district: string | null;
+  residence_village: string | null;
+  residence_address: string | null;
+  residence_address_note: string | null;
+  solitary_status: string | null;
+  source_sheet_name: string | null;
+  source_row_number: number | null;
+  import_batch_code: string | null;
+  import_visit_result: string | null;
+  import_visitor_name: string | null;
   required_visitor_types: unknown;
   co_visit_required: boolean | null;
   risk_level: string | null;

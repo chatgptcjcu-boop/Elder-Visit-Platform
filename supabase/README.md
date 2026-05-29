@@ -4,6 +4,38 @@
 
 目前專案已整理好 `supabase/migrations` 內的 SQL。若尚未安裝 Supabase CLI，可先用 Supabase 後台的 SQL Editor 手動執行。
 
+若要減少逐檔複製，可先產生單一 SQL bundle：
+
+```bash
+npm run db:bundle
+```
+
+預設會把所有 `supabase/migrations/*.sql` 依檔名順序合併到：
+
+```text
+tmp/supabase-selected.sql
+```
+
+若只要產生最近幾支 migration：
+
+```bash
+npm run db:bundle -- --from 0031 --to 0032
+```
+
+若要直接複製到 macOS 剪貼簿，方便貼到 Supabase SQL Editor：
+
+```bash
+npm run db:bundle -- --from 0031 --to 0032 --clipboard
+```
+
+若需要連同 seed data 一起貼：
+
+```bash
+npm run db:bundle -- --include-seed
+```
+
+注意：`seed.sql` 可能建立或覆寫測試資料，正式資料庫執行前請先確認內容。
+
 請依照檔名順序執行：
 
 1. `0001_governance_schema.sql`
@@ -38,6 +70,7 @@
 30. `0030_visitor_remittance_storage_qr_site.sql`
 31. `0031_backfill_approved_visitor_records.sql`
 32. `0032_registration_duplicate_guards.sql`
+33. `0033_elder_case_import_fields.sql`
 
 最後再執行：
 
@@ -47,7 +80,7 @@
 
 - 帳號、單位、工作空間、角色、權限：`0001`, `0009`, `0020`, `0021`, `0026`, `0027`, `0032`
 - 啟動流程、藍圖、方案限制、AI 建議：`0002`, `0012`
-- 名冊、訪員、派案、訪查紀錄：`0003`, `0016`, `0017`, `0025`, `0026`, `0027`
+- 名冊、訪員、派案、訪查紀錄：`0003`, `0016`, `0017`, `0025`, `0026`, `0027`, `0033`
 - 空間規則、停用復原、贊助企業聯名：`0004`, `0022`
 - 匯入欄位、客製欄位：`0005`
 - 表單、流程模板、匯出模板、KPI：`0006`, `0018`, `0024`
@@ -68,6 +101,7 @@
 - 執行 `0030` 後，訪員新上傳的存摺封面會優先保存至私有 `visitor-remittance-documents` bucket，既有舊 Netlify QR 連結會修正到正式 Vercel 網址，登入邀請亦會累計寄送次數供後台辨識重寄紀錄。
 - 執行 `0031` 後，已核准但缺少帳號、工作空間訪員身分或正式訪員資料的紀錄，會從 `workspace_registration_requests` 補齊到 `accounts`、`workspace_memberships` 與 `visitor_profiles`。
 - 執行 `0032` 後，註冊查重會使用信箱、身分證字號與手機欄位的索引，讓公開註冊與後台大量審核在 200 位以上資料量時仍維持穩定。
+- 執行 `0033` 後，個案名冊可保存新北永和獨老清冊中的性別、服務單位、Line、緊急聯絡人、戶籍/居住地址、獨居資格與匯入來源追蹤欄位。
 - 正式環境可設定 `NEXT_PUBLIC_APP_URL` 作為新產生 QR Code 的網址基底，例如 `https://elder-visit-platform.vercel.app`。
 - 目前程式已有 Supabase 連線設定，但 repository 仍有 mock fallback。資料表建立後，下一步才是逐頁把資料來源改成 Supabase 查詢。
 - RLS 已在 migration 中啟用，正式接資料時要以登入帳號、工作空間成員與角色權限做查詢範圍控管。

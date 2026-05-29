@@ -13,6 +13,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "db:bundle": "node scripts/build-supabase-sql-bundle.mjs",
     "task:new": "node scripts/create-task-brief.mjs",
     "task:orchestrate": "node scripts/orchestrate-task.mjs",
     "task:close": "node scripts/close-task.mjs"

@@ -15,14 +15,35 @@ export type ImportPreview = {
 };
 
 const targetHints = [
+  { targetField: "case_code", labels: ["編碼", "案號", "case_code"] },
+  { targetField: "service_unit", labels: ["服務單位", "service_unit"] },
   { targetField: "name", labels: ["姓名", "長者姓名", "name"] },
+  { targetField: "gender", labels: ["性別", "gender"] },
   { targetField: "national_id", labels: ["身分證", "身分證字號", "id"] },
   { targetField: "birth_date", labels: ["出生", "生日", "出生年月日", "birth"] },
+  { targetField: "age", labels: ["年齡", "age"] },
   { targetField: "phone", labels: ["電話", "手機", "phone"] },
+  { targetField: "line_id_status", labels: ["Line ID", "line"] },
+  { targetField: "line_id_note", labels: ["Line ID 內容", "line_note"] },
+  { targetField: "emergency_contact_name", labels: ["緊急聯絡人姓名"] },
+  { targetField: "emergency_contact_relationship", labels: ["緊急聯絡人關係"] },
+  { targetField: "emergency_contact_phone", labels: ["緊急聯絡人電話"] },
+  { targetField: "household_city", labels: ["戶籍縣市"] },
+  { targetField: "household_district", labels: ["戶籍區"] },
+  { targetField: "household_village", labels: ["戶籍里"] },
+  { targetField: "household_address", labels: ["戶籍地址"] },
   { targetField: "address", labels: ["地址", "住址", "address"] },
+  { targetField: "residence_address_note", labels: ["居住說明"] },
+  { targetField: "residence_city", labels: ["居住城市"] },
+  { targetField: "residence_district", labels: ["居住區"] },
+  { targetField: "residence_village", labels: ["居住里"] },
+  { targetField: "residence_address", labels: ["居住詳細地址", "居住地址"] },
   { targetField: "district", labels: ["行政區", "區域", "district"] },
   { targetField: "village", labels: ["里", "村里", "里別", "village"] },
   { targetField: "risk_level", labels: ["風險", "風險等級", "risk"] },
+  { targetField: "solitary_status", labels: ["獨居資格"] },
+  { targetField: "import_visit_result", labels: ["訪視結果"] },
+  { targetField: "import_visitor_name", labels: ["訪員姓名"] },
 ];
 
 export function parseCsvPreview(csvText: string): ImportPreview {

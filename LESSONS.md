@@ -124,3 +124,35 @@
 - **Rule:** Check the formal visitor profile first, then pending or approved registration requests, using email, official email, national ID and phone before inserting a new application; backend rosters and exports should count formal visitor records, not raw application rows.
 - **Evidence:** `lib/domain/user-management.ts`, `components/workspace/users-panel.tsx`, and `supabase/migrations/0032_registration_duplicate_guards.sql`.
 - **Added on:** 2026-05-29
+
+## Lesson: SQL Editor workflows need a generated paste bundle
+
+- **Trigger:** Supabase migrations were being applied by manually opening and pasting one SQL file at a time.
+- **Cause:** The local environment did not have `supabase` CLI, Docker, or `psql`, so direct database execution was not available.
+- **Rule:** Use `npm run db:bundle` to generate an ordered SQL bundle for Supabase SQL Editor before falling back to file-by-file manual copying.
+- **Evidence:** `scripts/build-supabase-sql-bundle.mjs` and `supabase/README.md`.
+- **Added on:** 2026-05-29
+
+## Lesson: Government Excel imports must verify the real file container
+
+- **Trigger:** A workbook renamed or saved as `無密碼.xlsx` still opened as a CDFV2 encrypted Office container rather than a standard zipped XLSX file.
+- **Cause:** Operational spreadsheets can retain legacy/encrypted Office containers even when the filename extension suggests a normal workbook.
+- **Rule:** Detect the actual file signature before parsing, support password-assisted preview when needed, and store import batch/source metadata so government roster rows can be audited after conversion.
+- **Evidence:** `docs/elder-case-batch-import-plan.md`, `supabase/migrations/0033_elder_case_import_fields.sql`, and `lib/domain/imports.ts`.
+- **Added on:** 2026-05-29
+
+## Lesson: Visit guides should become staged field workflows
+
+- **Trigger:** A government visit guide described how visitors should ask, observe, and obtain consent, but the app only exposed a long form.
+- **Cause:** Form fields preserve data structure, but do not teach field workers the order, tone, and hidden observation tasks needed during a real visit.
+- **Rule:** Convert visit guides into staged, collapsible field workflows above the form, with each stage linking to the relevant form sections and observation checks.
+- **Evidence:** `lib/domain/visit-guide.ts`, `components/visitor/visit-dialogue-form.tsx`, and `docs/new-taipei-care-form-workflow.md`.
+- **Added on:** 2026-05-29
+
+## Lesson: Large roster imports need a marked pilot batch
+
+- **Trigger:** A 75-plus Yonghe roster had more than 7,000 rows and no case codes.
+- **Cause:** Importing the whole file before parser, mapping, assignment and visit flows are validated creates too much operational risk.
+- **Rule:** Start with a clearly marked pilot batch from the source workbook, generate deterministic case codes, keep source batch metadata and row numbers, and only import the remaining rows after the assignment and visit workflow passes.
+- **Evidence:** `lib/domain/yh-75-demo-data.ts`, `lib/domain/mock-data.ts`, and `lib/domain/assignments.ts`.
+- **Added on:** 2026-05-30
