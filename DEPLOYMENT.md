@@ -9,40 +9,8 @@
 建議使用：
 
 - GitHub：保存程式碼
-- Netlify 或 Vercel：發佈 Next.js 網站
+- Vercel：發佈 Next.js 網站
 - Supabase：資料庫、Auth、Storage
-
-## Netlify 發佈流程
-
-1. 到 Netlify 選 **Add new site**。
-2. 選 **Import an existing project**。
-3. 連接 GitHub。
-4. 選 repository：`chatgptcjcu-boop/Elder-Visit-Platform`。
-5. Build settings：
-   - Build command：`npm run build`
-   - Publish directory：`.next`
-   - Netlify Next.js plugin：使用 `netlify.toml` 內的 `@netlify/plugin-nextjs`
-6. 到 **Environment variables** 新增：
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://ojypmuzlqdmnpdyeaszc.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=你的 Supabase publishable / anon key
-```
-
-7. 按 **Deploy**。
-8. Netlify 產生網址後，到 Supabase Auth 設定：
-   - Site URL：填 Netlify 網址
-   - Redirect URLs：加入 Netlify 網址與 `/login`
-
-## Netlify 每日 Supabase 保活
-
-本專案已加入 `netlify/functions/supabase-keepalive.ts`。Netlify 發佈後會每天 UTC 20:00，也就是台灣時間 04:00，自動用 anon key 查詢 Supabase 的 `platform_blueprints`，降低 Free 專案因長時間無活動被暫停的風險。
-
-注意：
-
-- 此機制只使用 `NEXT_PUBLIC_SUPABASE_URL` 與 `NEXT_PUBLIC_SUPABASE_ANON_KEY`。
-- 不需要也不應放入 `service_role key`。
-- 若系統正式營運，仍建議升級 Supabase Pro，因為 keep-alive 不是官方 SLA 保證。
 
 ## Vercel 必填環境變數
 
@@ -51,12 +19,15 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=你的 Supabase publishable / anon key
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://ojypmuzlqdmnpdyeaszc.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=你的 Supabase publishable / anon key
+NEXT_PUBLIC_APP_URL=https://elder-visit-platform.vercel.app
+SUPABASE_SERVICE_ROLE_KEY=你的 Supabase service role key
 ```
 
 注意：
 
 - 不要把 `service_role key` 放進 `NEXT_PUBLIC_*`。
-- `service_role key` 只有後端管理任務需要時才可放在非公開環境變數。
+- `SUPABASE_SERVICE_ROLE_KEY` 是後端管理任務使用的非公開環境變數，不能外流到瀏覽器。
+- Vercel 環境變數異動後需要重新部署，新的部署才會讀到新值。
 
 ## Supabase 已完成項目
 
@@ -74,12 +45,12 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=你的 Supabase publishable / anon key
 5. 新增上方 Supabase 環境變數。
 6. Deploy。
 7. Vercel 產生網址後，到 Supabase Auth 設定：
-   - Site URL：填 Vercel 網址
-   - Redirect URLs：加入 Vercel 網址與 `/login`
+   - Site URL：`https://elder-visit-platform.vercel.app`
+   - Redirect URLs：加入 `https://elder-visit-platform.vercel.app/login` 與需要的邀請/驗證回跳網址
 
 ## 上線後測試
 
-1. 開啟 Vercel 網址。
+1. 開啟 `https://elder-visit-platform.vercel.app`。
 2. 登入 `manager@eldervisit.org / manager123` 確認示範 fallback 可用。
 3. 建立正式 Supabase Auth 使用者後，再用正式帳號測試登入。
 4. 檢查以下頁面：

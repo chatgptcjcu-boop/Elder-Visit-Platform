@@ -16,9 +16,9 @@
 ## Lesson: Build success is not deployment confirmation
 
 - **Trigger:** A completed local build could be mistaken for a published site.
-- **Cause:** Local verification, git state, and Netlify deployment are separate stages.
-- **Rule:** Report local edits, local checks, git push state, and live deployment state separately.
-- **Evidence:** `DEPLOYMENT.md` and the Netlify publish workflow.
+- **Cause:** Local verification, git state, and Vercel deployment are separate stages.
+- **Rule:** Report local edits, local checks, git push state, Vercel deployment state, and live URL verification separately.
+- **Evidence:** `DEPLOYMENT.md` and the Vercel publish workflow.
 - **Added on:** 2026-05-17
 
 ## Lesson: Prefer the reliable verification path in this workspace

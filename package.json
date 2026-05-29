@@ -35,7 +35,6 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
-    "@netlify/plugin-nextjs": "^5.15.10",
     "@opennextjs/cloudflare": "^1.19.11",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.2",

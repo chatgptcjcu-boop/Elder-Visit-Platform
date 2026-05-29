@@ -190,7 +190,7 @@ eldervisit://visitor/EV-115-YH-CIV-0001
 或使用正式網址：
 
 ```text
-https://eldervisit.netlify.app/verify/visitor/EV-115-YH-CIV-0001
+https://elder-visit-platform.vercel.app/verify/visitor/EV-115-YH-CIV-0001
 ```
 
 未來可用於：
@@ -505,7 +505,7 @@ POST /api/users/visitor-qrcode
 7. 補資料後的「管理者確認」流程還不完整。
 8. 可派案狀態應由資料完整度、受訓、匯款、審核狀態共同判斷，目前還不夠嚴謹。
 9. 大頭照目前已有裁切與白底處理，但真正 AI 去背尚未串接外部服務。
-10. 正式上線前，需要確認 Netlify 環境變數、Supabase RLS、Service Role 使用範圍與安全性。
+10. 正式上線前，需要確認 Vercel 環境變數、Supabase RLS、Service Role 使用範圍與安全性。
 
 ## 13. 建議確認事項
 
@@ -541,7 +541,7 @@ POST /api/users/visitor-qrcode
 3. 訪員資格檔新增正式訪員編碼、資料補完狀態、緊急聯絡人欄位、服務時段、QR Code payload 與可派案狀態。
 4. 註冊送出時會準備 `registration_code` 與資料補完狀態。
 5. 審核通過建立訪員資格檔時會產生 `visitor_code`，格式接近 `EV-115-YH-CIV-0001`。
-6. QR Code payload 先保存為 `https://eldervisit.netlify.app/verify/visitor/{visitor_code}`。
+6. QR Code payload 先保存為 `https://elder-visit-platform.vercel.app/verify/visitor/{visitor_code}`。
 
 尚未完成，留到後續階段：
 
