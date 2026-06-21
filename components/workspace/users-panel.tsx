@@ -930,6 +930,7 @@ function ApprovedVisitorRegistry({
   const [inviteMessage, setInviteMessage] = useState<string | null>(null);
   const [exportingPhotos, setExportingPhotos] = useState(false);
   const [exportingPassbooks, setExportingPassbooks] = useState(false);
+  const [issuingBadges, setIssuingBadges] = useState(false);
   const baseFilteredRequests = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
@@ -1311,6 +1312,52 @@ function ApprovedVisitorRegistry({
     }
   }
 
+  async function issueAndPrintBadges() {
+    const targets = exportRequests.filter((request) => {
+      const profile = request.visitorRegistrationProfile;
+      return request.status === "approved" && Boolean(profile?.visitorCode);
+    });
+
+    if (targets.length === 0) {
+      setInviteMessage("目前範圍內沒有可發證的正式訪員。");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `確認為 ${targets.length} 位訪員產生訪員證？\n\n已發過有效訪員證者會沿用原證，不會重複發證。`,
+    );
+    if (!confirmed) return;
+
+    setIssuingBadges(true);
+    setInviteMessage(null);
+
+    try {
+      const response = await fetch("/api/users/visitor-badges", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ requestIds: targets.map((request) => request.id) }),
+      });
+      const json = (await response.json()) as {
+        data?: { message: string; issued: number; skipped: string[]; badgeIds: string[] };
+        error?: { message?: string };
+      };
+
+      if (!response.ok || !json.data) {
+        setInviteMessage(json.error?.message ?? "訪員證產生失敗，請稍後再試。");
+        return;
+      }
+
+      setInviteMessage(
+        `${json.data.message}${json.data.skipped.length ? ` 略過：${json.data.skipped.join("、")}` : ""}`,
+      );
+      if (json.data.badgeIds.length > 0) {
+        window.open(`/workspace/users/badges/print?badgeIds=${json.data.badgeIds.join(",")}`, "_blank");
+      }
+    } finally {
+      setIssuingBadges(false);
+    }
+  }
+
   return (
     <section id="approved-visitors" className="rounded-lg border bg-card p-3 sm:p-4">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
@@ -1374,6 +1421,15 @@ function ApprovedVisitorRegistry({
           >
             <Download className="h-4 w-4" />
             {exportingPassbooks ? "存摺附件打包中" : "匯出存摺附件（敏感資料）"}
+          </Button>
+          <Button
+            type="button"
+            className="w-full sm:col-span-2"
+            onClick={issueAndPrintBadges}
+            disabled={exportRequests.length === 0 || issuingBadges}
+          >
+            <IdCard className="h-4 w-4" />
+            {issuingBadges ? "訪員證產生中" : "產生 / 列印訪員證"}
           </Button>
         </div>
         )}
@@ -1439,6 +1495,12 @@ function ApprovedVisitorRegistry({
             <Button type="button" variant="outline" onClick={batchInviteVisitors} disabled={batchAction !== null}>
               <Mail className="h-4 w-4" />
               {batchAction === "invite" ? "發送中" : "批次發送邀請"}
+            </Button>
+            )}
+            {mode === "approved" && (
+            <Button type="button" variant="outline" onClick={issueAndPrintBadges} disabled={issuingBadges}>
+              <IdCard className="h-4 w-4" />
+              {issuingBadges ? "發證中" : "批次發證列印"}
             </Button>
             )}
             <Button type="button" onClick={batchVerifyVisitors} disabled={batchAction !== null}>

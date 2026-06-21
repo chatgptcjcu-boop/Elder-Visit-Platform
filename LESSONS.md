@@ -164,3 +164,11 @@
 - **Rule:** Separate display sampling from validation: show a small preview table, but compute total rows, warnings, duplicate case-code checks and write eligibility from the full parsed file.
 - **Evidence:** `lib/domain/imports.ts`, `components/import/import-preview-tool.tsx`, and `app/api/import/commit/route.ts`.
 - **Added on:** 2026-06-22
+
+## Lesson: Issued badges need immutable snapshots
+
+- **Trigger:** Visitor badges must support paper printing, QR verification, and mobile electronic copies even if a profile changes later.
+- **Cause:** Rendering badges directly from live visitor profile fields makes past printed badges hard to audit and can silently change what a QR code represents.
+- **Rule:** Store an issued-badge snapshot with visitor code, display identity, photo reference, validity dates, QR payload, claim token hash and serial; use that snapshot for printing, public verification and mobile badge claiming.
+- **Evidence:** `supabase/migrations/0034_visitor_badges.sql`, `lib/domain/visitor-badges.ts`, and `components/badges/visitor-badge-card.tsx`.
+- **Added on:** 2026-06-22
