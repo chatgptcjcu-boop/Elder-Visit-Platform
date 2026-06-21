@@ -156,3 +156,11 @@
 - **Rule:** Start with a clearly marked pilot batch from the source workbook, generate deterministic case codes, keep source batch metadata and row numbers, and only import the remaining rows after the assignment and visit workflow passes.
 - **Evidence:** `lib/domain/yh-75-demo-data.ts`, `lib/domain/mock-data.ts`, and `lib/domain/assignments.ts`.
 - **Added on:** 2026-05-30
+
+## Lesson: Import previews must validate the full file
+
+- **Trigger:** A 60-row assignment test CSV appeared valid in preview only because the old preview path inspected the first few rows.
+- **Cause:** Sampling rows for display and validating rows for write readiness were using the same reduced dataset.
+- **Rule:** Separate display sampling from validation: show a small preview table, but compute total rows, warnings, duplicate case-code checks and write eligibility from the full parsed file.
+- **Evidence:** `lib/domain/imports.ts`, `components/import/import-preview-tool.tsx`, and `app/api/import/commit/route.ts`.
+- **Added on:** 2026-06-22

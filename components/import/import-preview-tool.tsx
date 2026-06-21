@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { FileSpreadsheet, Upload } from "lucide-react";
+import { CheckCircle2, Database, FileSpreadsheet, Upload } from "lucide-react";
 import { parseCsvPreview, type ImportPreview } from "@/lib/domain/imports";
 
 const sampleCsv = `姓名,電話,地址,行政區,風險等級
@@ -13,12 +13,17 @@ export function ImportPreviewTool({ compact = false }: { compact?: boolean }) {
   const [csvText, setCsvText] = useState(sampleCsv);
   const [fileName, setFileName] = useState<string | null>(null);
   const [uploadedPreview, setUploadedPreview] = useState<ImportPreview | null>(null);
+  const [isCommitting, setIsCommitting] = useState(false);
+  const [commitResult, setCommitResult] = useState<ImportCommitResult | null>(null);
+  const [commitError, setCommitError] = useState<string | null>(null);
   const preview = useMemo(() => uploadedPreview ?? parseCsvPreview(csvText), [csvText, uploadedPreview]);
 
   async function readImportFile(file: File | null) {
     if (!file) return;
 
     setFileName(file.name);
+    setCommitResult(null);
+    setCommitError(null);
     const formData = new FormData();
     formData.append("file", file);
 
@@ -34,6 +39,40 @@ export function ImportPreviewTool({ compact = false }: { compact?: boolean }) {
     if (file.name.endsWith(".csv") || file.name.endsWith(".txt")) {
       setCsvText(await file.text());
       return;
+    }
+  }
+
+  async function commitImport() {
+    if (preview.validation.rowsWithWarnings > 0 || !csvText.trim()) return;
+
+    const confirmed = window.confirm(
+      `確認將 ${preview.validation.validRows} 筆可匯入資料正式寫入名冊？重複案號會自動略過。`,
+    );
+    if (!confirmed) return;
+
+    setIsCommitting(true);
+    setCommitResult(null);
+    setCommitError(null);
+
+    try {
+      const response = await fetch("/api/import/commit", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ csvText, fileName }),
+      });
+      const result = (await response.json()) as {
+        data?: ImportCommitResult;
+        error?: { message?: string };
+      };
+
+      if (!response.ok || !result.data) {
+        setCommitError(result.error?.message ?? "寫入失敗，請稍後再試。");
+        return;
+      }
+
+      setCommitResult(result.data);
+    } finally {
+      setIsCommitting(false);
     }
   }
 
@@ -74,6 +113,8 @@ export function ImportPreviewTool({ compact = false }: { compact?: boolean }) {
           value={csvText}
           onChange={(event) => {
             setUploadedPreview(null);
+            setCommitResult(null);
+            setCommitError(null);
             setCsvText(event.target.value);
           }}
         />
@@ -91,6 +132,43 @@ export function ImportPreviewTool({ compact = false }: { compact?: boolean }) {
             {preview.validation.warnings.join("；")}
           </div>
         )}
+        <div className="mt-4 rounded-lg border bg-background p-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-medium">正式寫入流程</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                完成檢核後寫入名冊；已有相同個案編碼者會略過，不重複新增。
+              </p>
+            </div>
+            <button
+              type="button"
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={
+                isCommitting || preview.validation.validRows === 0 || preview.validation.rowsWithWarnings > 0
+              }
+              onClick={() => void commitImport()}
+            >
+              <Database className="h-4 w-4" />
+              {isCommitting ? "寫入中" : "確認寫入名冊"}
+            </button>
+          </div>
+          {commitError && (
+            <p className="mt-3 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {commitError}
+            </p>
+          )}
+          {commitResult && (
+            <div className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+              <div className="flex items-center gap-2 font-medium">
+                <CheckCircle2 className="h-4 w-4" />
+                匯入批次 {commitResult.batchCode} 已完成
+              </div>
+              <p className="mt-1">
+                新增 {commitResult.insertedRows} 筆，略過重複 {commitResult.skippedRows} 筆。
+              </p>
+            </div>
+          )}
+        </div>
         <div className="mt-4 space-y-3">
           {preview.suggestedMappings.map((mapping) => (
             <div key={mapping.sourceColumn} className="rounded-md border bg-background p-3 text-sm">
@@ -134,6 +212,16 @@ export function ImportPreviewTool({ compact = false }: { compact?: boolean }) {
     </div>
   );
 }
+
+type ImportCommitResult = {
+  batchCode: string;
+  totalRows: number;
+  parsedRows: number;
+  insertedRows: number;
+  skippedRows: number;
+  skippedCaseCodes: string[];
+  columns: string[];
+};
 
 function ImportMetric({ label, value }: { label: string; value: number }) {
   return (
